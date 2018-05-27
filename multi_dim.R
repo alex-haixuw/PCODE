@@ -7,12 +7,21 @@
 #############################################################################
 
 
+#Function list
+#1. prepare_basis
+#2.
+#
+#
+#
+#
+#
+#
+#
 
 
 
-
-#####
-#'prepare_basis' :
+###############
+#1. Function : 'prepare_basis'
 #
 #        Given a basis object, it evaluates the basis over both observation points and equally spaced quadtuare points.
 #
@@ -22,8 +31,10 @@
 #    nquadpts: A numeric value that defines the number of quadrature points
 #
 #Output:
-#     Phi.mat: The matrix contains evaluations of all basis functions at every observation times, where evaluations of each basis #                    function are  stored as the columns of the matrix.
-#        Qmat: The matrix contains evaluations of all basis functions at every quadrature points in the support, where evaluations of #                    each basis function are stored as the columns of the matrix.
+#     Phi.mat: The matrix contains evaluations of all basis functions at every observation times, where evaluations of each basis
+#                    function are  stored as the columns of the matrix.
+#        Qmat: The matrix contains evaluations of all basis functions at every quadrature points in the support, where evaluations of
+#                    each basis function are stored as the columns of the matrix.
 #     Q.D1mat: The matrix contains evaluations of the first order derivative of all basis functions at every quadature points.
 #     Q.D2mat: The matrix contains evaluations of the second order derivative of all basis functions at every quadature points.
 #      quadts: A vector of quadrature points.
@@ -32,8 +43,7 @@
 #Comment:
 #
 #
-#
-#
+###############
 prepare_basis <- function(x, times, nquadpts){
 
   #Evaluate basis functions over observation time points
@@ -87,20 +97,20 @@ nls_multidim <- function(par.initial, ode.model, basis.list,observations, observ
                                   basis.eval.list[[ii]]$quadts, basis.eval.list[[ii]]$quadwts,observation.times,
                                   state.names,model.names)
       }
-      
+
       #
-  
+
       temp <- lsqnonlin(innerobj_multi, unlist(initial_coef), ode.par = par.initial, derive.model = ode.model, input = inner.input, NLS=TRUE,options = list(tau = 0.01))$x
- 
+
       #temp <- optim(unlist(initial_coef),innerobj_multi, ode.par = par.initial, derive.model = ode.model, input = inner.input, NLS=FALSE)$par
-      #Takes about 10 seconds for this optimization 
-      
-      
+      #Takes about 10 seconds for this optimization
+
+
 
       par.final <- lsqnonlin(options = list(maxeval = 30,tau = 0.01),outterobj_multi_nls, par.initial,basis.initial = unlist(initial_coef), derivative.model = ode.model, inner.input = inner.input)$x
 
       #par.final <- optim(par.initial,outterobj_multi_nls,basis.initial = unlist(initial_coef), derivative.model = ode.model, inner.input = inner.input,NLS=FALSE, control=list(trace=1))$par
-      
+
       basis.coef.final <- lsqnonlin(innerobj_multi, unlist(initial_coef), ode.par = par.final, derive.model = ode.model, input = inner.input, NLS=TRUE,options = list(tau = 0.01))$x
       #basis.coef.final <- optim(unlist(initial_coef),innerobj_multi, ode.par = par.final, derive.model = ode.model, input = inner.input, NLS=FALSE)$par
 
@@ -198,7 +208,7 @@ innerobj_multi  <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
 
 outterobj_multi_nls <- function(ode.parameter, basis.initial, derivative.model, inner.input,NLS=TRUE){
   #Convergence of basis coefficients seems to happen before 'maxeval'.
-  
+
   inner_coef <- lsqnonlin(innerobj_multi, basis.initial, ode.par = ode.parameter, derive.model = derivative.model, options = list(maxeval = 100,tolx=1e-6,tolg=1e-6), input = inner.input)$x
   #inner_coef <- optim(basis.initial,innerobj_multi,  ode.par = ode.parameter, derive.model = derivative.model, input = inner.input,NLS=FALSE)$par
   #Get variables  from 'input'
@@ -224,6 +234,6 @@ outterobj_multi_nls <- function(ode.parameter, basis.initial, derivative.model, 
   }else{
     return(sum(residual^2))
   }
-    
+
 
 }
