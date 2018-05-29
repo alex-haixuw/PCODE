@@ -1,103 +1,22 @@
-#############################################################################
-#
-#
-#
-#
-#
-#############################################################################
-
-
-#Function list
-#1. prepare_basis
-#2. PC_ODE
-#3. innerobj_multi
-#4. outterobj_multi_nls
-#5. innerobj
-#6. outterobj
-#7. cascade_nls
-#
-#
-#
-
-
-
-###############
-#1. Function : 'prepare_basis'
-#
-#        Given a basis object, it evaluates the basis over both observation points and equally spaced quadtuare points.
-#
-#Input:
-#           x: A basis object
-#       times: A vector containing Observation points
-#    nquadpts: A numeric value that defines the number of quadrature points
-#
-#Output:
-#     Phi.mat: The matrix contains evaluations of all basis functions at every observation times, where evaluations of each basis
-#                    function are  stored as the columns of the matrix.
-#        Qmat: The matrix contains evaluations of all basis functions at every quadrature points in the support, where evaluations of
-#                    each basis function are stored as the columns of the matrix.
-#     Q.D1mat: The matrix contains evaluations of the first order derivative of all basis functions at every quadature points.
-#     Q.D2mat: The matrix contains evaluations of the second order derivative of all basis functions at every quadature points.
-#      quadts: A vector of quadrature points.
-#     quadwts: A vector of quadrature weights for each quadrature points.
-#
-#Comment:
-#
-#
-###############
-prepare_basis <- function(x, times, nquadpts){
-
-  #Evaluate basis functions over observation time points
-  Phi.mat <- eval.basis(times, x)
-
-  #Preparation to calculate L2 penalty
-  #Evaluate basis function over quadrature points, and the number of
-  #quadrature points, 'nquadpts', defined the density of points.
-  quadts   <- seq(min(times),max(times),length.out=nquadpts)
-  nquad    <- length(quadts)
-  quadwts  <- rep(1,nquad)
-  even.ind <- seq(2,(nquad-1),by=2)
-  odd.ind  <- seq(3,(nquad-2),by=2)
-  quadwts[even.ind] = 4
-  quadwts[odd.ind] = 2
-  h  <- quadts[2] - quadts[1]
-  quadwts <- quadwts*(h/3)
-
-  Qmat    <- eval.basis(quadts, basis)
-  Q.D1mat <- eval.basis(quadts, basis, 1)
-  Q.D2mat <- eval.basis(quadts, basis, 2)
-
-  return(list(Phi.mat = Phi.mat, Qmat = Qmat, Q.D1mat = Q.D1mat, Q.D2mat = Q.D2mat, quadts= quadts, quadwts = quadwts))
-
-}
-
-
-###############
-#2. Function: 'PC_ODE'
-#
-#
-#Input:
-#
-#         data: A data frame or a matrix contain observations from each dimension of the ODE model.
-#         time: A vector contain observation times or a matrix if time points are different between dimensions.
-#    ode.model: A function that computes the time derivative of the ODE model given states variable evaluated at a given time.
-#    par.names: A vector contains the names of structural parameters defined in the 'ode.model'.
-#  state.names: A vector contains the names of state variables defined in the 'ode.model'.
-#  par.initial: Initial value of structural parameters to be optimized.
-#   basis.list: A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.
-#       lambda: Penalty parameter.
-#     controls: A list of control parameters. See ‘Details’.
-#
-#Output:
-#
-#   structural.par: The structural parameters of the ODE model.
-#    nuissance.par: The nuissance parameters or the basis coefficients for interpolating observations.
-#
-#
-#Comment:
-#
-###############
-#data, time , ode.model, state.names, par.names, par.initial = NULL, basis.list = DEFAULT (order = 5,
+#' @title Parameter Cascade Method for Ordinary Differential Equation Models
+#' @description Obtain estiamtes of structural parameters of an ODE model by parameter cascade method.
+#' @usage PC_ODE(data, time, ode.model, par.names, state.names, \cr        par.initial, basis.list,lambda,controls)
+#' @param        data A data frame or a matrix contain observations from each dimension of the ODE model.
+#' @param         time The vector contain observation times or a matrix if time points are different between dimensions.
+#' @param    ode.model Defined R function that computes the time derivative of the ODE model given observations of states variable.
+#' @param    par.names The names of structural parameters defined in the 'ode.model'.
+#' @param  state.names The names of state variables defined in the 'ode.model'.
+#' @param  par.initial Initial value of structural parameters to be optimized.
+#' @param   basis.list A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.
+#' @param       lambda Penalty parameter.
+#' @param     controls A list of control parameters. See ‘Details’.
+#'
+#' @return   \item{structural.par}{The structural parameters of the ODE model.}
+#'
+#' @return    \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
+#' @examples PC_ODE(arg1,arg2)
+#' @details something
+#' @export
 PC_ODE <- function(data, time, ode.model,par.names,state.names,  par.initial, basis.list, lambda = NULL,controls = NULL){
 
       #Set up default controls for optimizations and quadrature evaluation
@@ -121,7 +40,7 @@ PC_ODE <- function(data, time, ode.model,par.names,state.names,  par.initial, ba
         #For each dimension, obtain initial value for the nuissance parameters or the basis coefficients
         Rmat = t(basis.eval.list[[ii]]$Q.D2mat)%*%(basis.eval.list[[ii]]$Q.D2mat*(basis.eval.list[[ii]]$quadwts%*%t(rep(1,basis.list[[ii]]$nbasis))))
         basismat2 = t(basis.eval.list[[ii]]$Phi.mat)%*%basis.eval.list[[ii]]$Phi.mat;
-        Bmat    = basismat2 + con.default$smooth_lambda*Rmat;
+        Bmat    = basismat2 + con.now$smooth_lambda*Rmat;
         #Initial basis coefficients
         initial_coef[[ii]] = ginv(Bmat)%*%t(basis.eval.list[[ii]]$Phi.mat)%*%data[,ii]
         inner.input[[ii]]  = list(data[,ii], basis.eval.list[[ii]]$Phi.mat, lambda,
@@ -135,7 +54,7 @@ PC_ODE <- function(data, time, ode.model,par.names,state.names,  par.initial, ba
       #temp <- lsqnonlin(innerobj_multi, unlist(initial_coef), ode.par = par.initial, derive.model = ode.model, input = inner.input, NLS=TRUE,options = list(tau = 0.01))$x
 
       #Running optimization for outter objective function to obtain structural parameter
-      par.final <- lsqnonlin(options = list(maxeval = con.default$maxeval,tau = con.default$tau),outterobj_multi_nls, par.initial,basis.initial = unlist(initial_coef), derivative.model = ode.model, inner.input = inner.input)$x
+      par.final <- lsqnonlin(options = list(maxeval = con.now$maxeval,tau = con.now$tau),outterobj_multi_nls, par.initial,basis.initial = unlist(initial_coef), derivative.model = ode.model, inner.input = inner.input)$x
       #Condition on the obtained structural parameter, calculate the nuissance parameter or the basis coefficients to interpolate data
       basis.coef.final <- lsqnonlin(innerobj_multi, unlist(initial_coef), ode.par = par.final, derive.model = ode.model, input = inner.input, NLS=TRUE,options = list(tau =0.01))$x
 
@@ -144,30 +63,62 @@ PC_ODE <- function(data, time, ode.model,par.names,state.names,  par.initial, ba
 }
 
 
-#####
-#'innerobj_multi':
-#
-#            Conditioning on the structural parameters of the ODE model, 'ode.par', this functions returns either the
-#            inner objective function value (the sum of squared errors) or the residual between the observation and
-#            and the basis expansion estimates. The form of returning value depends on the later called optimizers.
-#
-#
-#Input:
-#     basis_coef: A single vector containing the basis coefficients of all dimensions of the ODE model.
-#        ode.par: A vector or a numeric value containing the structural parameter of the ODE model.
-#   derive.model: The function defines the time derivative of of each state variable
-#           NLS : A logic value determines whether the function should return a numeric value (NLS = FALSE)
-#                                                                    or a vector of residuals (NLS = TRUE)
-#Output
-#
-#         residual.vec : A vector containing the residuals from using basis expansion to estimate observations
-#                        and the quarature evaluations to approximate the ODE penalty,
-#   sum(residual.vec^2): A numeric value correspondes to the inner objective function value.
-#
-#Comment:
-#
-#
-#
+
+#' @title Evaluate basis objects over observation times and quadrature points
+#' @description Calculate all basis functions over observation time points and store them as columns in a single matrix for each dimension. Also include first and second order derivative. Repeat over quadrature points.
+#' @usage prepare_basis(basis, times, nquadpts)
+#' @param basis A basis object.
+#' @param times The vector contain observation times for corresponding dimension.
+#' @param nquadpts Number of quadrature points will be used later for approximating integrals
+#'
+#' @return   \item{Phi.mat}{Evaluations of all basis functions stored as columns in the matrix.}
+#' @return   \item{Qmat}{Evaluations of all basis functions over quadrature points stored as columns in the matrix.}
+#' @return   \item{Q.D1mat}{Evaluations of first order derivative all basis functions over quadrature points stored as columns in the matrix.}
+#' @return   \item{Q.D2mat}{Evaluations of second order derivative all basis functions over quadrature points stored as columns in the matrix.}
+#' @return   \item{quadts}{Quadrature points.}
+#' @return   \item{quadwts}{Quadrature weights.}
+#'
+#' @examples lapply(basis.list, prepare_basis, times = time, nquadpts = nquadpts)
+#' @details something
+prepare_basis <- function(basis, times, nquadpts){
+
+  #Evaluate basis functions over observation time points
+  Phi.mat <- eval.basis(times, basis)
+
+  #Preparation to calculate L2 penalty
+  #Evaluate basis function over quadrature points, and the number of
+  #quadrature points, 'nquadpts', defined the density of points.
+  quadts   <- seq(min(times),max(times),length.out=nquadpts)
+  nquad    <- length(quadts)
+  quadwts  <- rep(1,nquad)
+  even.ind <- seq(2,(nquad-1),by=2)
+  odd.ind  <- seq(3,(nquad-2),by=2)
+  quadwts[even.ind] = 4
+  quadwts[odd.ind] = 2
+  h  <- quadts[2] - quadts[1]
+  quadwts <- quadwts*(h/3)
+
+  Qmat    <- eval.basis(quadts, basis)
+  Q.D1mat <- eval.basis(quadts, basis, 1)
+  Q.D2mat <- eval.basis(quadts, basis, 2)
+
+  return(list(Phi.mat = Phi.mat, Qmat = Qmat, Q.D1mat = Q.D1mat, Q.D2mat = Q.D2mat, quadts= quadts, quadwts = quadwts))
+
+}
+
+
+#' @title Inner objective function (multiple dimension version)
+#' @description An objective function combines the sum of squared error of basis expansion estimates and the penalty controls how those estimates fail to satisfies the ODE model
+#' @usage innerobj_multi(basis_coef, ode.par, input, derive.model,NLS)
+#' @param basis_coef Basis coefficients for interpolating observations given a basis object.
+#' @param ode.par Structural parameters of the ODE model.
+#' @param input Contains dependencies for the optimization, including observations, penalty parameter lambda, and etc..
+#' @param derive.model The function defines the ODE model and is the same as the ode.model in 'PC_ODE'
+#' @param NLS Default is \code{TRUE} so the function returns vector of residuals, and otherwise returns sum of squared errors.
+#'
+#' @return   \item{residual.vec}{Vector of residuals and evaluation of penalty function on quadrature points for approximating the integral.}
+#'
+#' @details something
 innerobj_multi  <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
 
 
@@ -229,9 +180,18 @@ innerobj_multi  <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
 
 }
 
-#####
-#
-#####
+#' @title Outter objective function (multiple dimension version)
+#' @description An objective function combines the sum of squared error of basis expansion estimates and the penalty controls how those estimates fail to satisfies the ODE model
+#' @usage innerobj_multi(basis_coef, ode.par, input, derive.model,NLS)
+#' @param basis_coef Basis coefficients for interpolating observations given a basis object.
+#' @param ode.par Structural parameters of the ODE model.
+#' @param input Contains dependencies for the optimization, including observations, penalty parameter lambda, and etc..
+#' @param derive.model The function defines the ODE model and is the same as the ode.model in 'PC_ODE'
+#' @param NLS Default is \code{TRUE} so the function returns vector of residuals, and otherwise returns sum of squared errors.
+#'
+#' @return   \item{residual.vec}{Vector of residuals and evaluation of penalty function on quadrature points for approximating the integral.}
+#'
+#' @details something
 outterobj_multi_nls <- function(ode.parameter, basis.initial, derivative.model, inner.input,NLS=TRUE){
   #Convergence of basis coefficients seems to happen before 'maxeval'.
 
