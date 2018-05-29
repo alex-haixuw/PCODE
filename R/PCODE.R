@@ -181,23 +181,21 @@ innerobj_multi  <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
 }
 
 #' @title Outter objective function (multiple dimension version)
-#' @description An objective function combines the sum of squared error of basis expansion estimates and the penalty controls how those estimates fail to satisfies the ODE model
-#' @usage innerobj_multi(basis_coef, ode.par, input, derive.model,NLS)
-#' @param basis_coef Basis coefficients for interpolating observations given a basis object.
-#' @param ode.par Structural parameters of the ODE model.
-#' @param input Contains dependencies for the optimization, including observations, penalty parameter lambda, and etc..
-#' @param derive.model The function defines the ODE model and is the same as the ode.model in 'PC_ODE'
+#' @description An objective function of the structural parameter computes the measure of fit for the basis expansion. 
+#' @usage outterobj_multi_nls(ode.parameter, basis.initial, derivative.model, inner.input, NLS)
+#' @param ode.parameter Structural parameters of the ODE model. 
+#' @param basis.initial Initial values of the basis coefficients for nonlinear least square optimization. 
+#' @param derivative.model The function defines the ODE model and is the same as the ode.model in 'PC_ODE'
+#' @param inner.input Input that will be passed to the inner objective function. Contains dependencies for the optimization, including observations, penalty parameter lambda, and etc..
 #' @param NLS Default is \code{TRUE} so the function returns vector of residuals, and otherwise returns sum of squared errors.
 #'
-#' @return   \item{residual.vec}{Vector of residuals and evaluation of penalty function on quadrature points for approximating the integral.}
+#' @return   \item{residual}{Vector of residuals and evaluation of penalty function on quadrature points for approximating the integral.}
 #'
 #' @details something
 outterobj_multi_nls <- function(ode.parameter, basis.initial, derivative.model, inner.input,NLS=TRUE){
   #Convergence of basis coefficients seems to happen before 'maxeval'.
 
   inner_coef <- lsqnonlin(innerobj_multi, basis.initial, ode.par = ode.parameter, derive.model = derivative.model, options = list(maxeval = 100,tolx=1e-6,tolg=1e-6), input = inner.input)$x
-  #inner_coef <- optim(basis.initial,innerobj_multi,  ode.par = ode.parameter, derive.model = derivative.model, input = inner.input,NLS=FALSE)$par
-  #Get variables  from 'input'
   ndim     <- length(inner.input)
   npoints  <- length(inner.input[[1]][[8]])
   basisnumber   <- rep(NA, ndim+1)
@@ -228,39 +226,18 @@ outterobj_multi_nls <- function(ode.parameter, basis.initial, derivative.model, 
 
 
 
-#####
-#  'innerobj'
-#
-# Description:
-#
-#   'innerobj' is the inner objective function to be optimzied for estimating nuisance
-#    parameters, the basis coefficients, of the model when a new structural parameter
-#    estimate is available.
-#
-#    This objective function contains two component:
-#        1. 'SSE' corresponds to the sum of squared errors between the observations
-#                and the estiamted trajectory by basis expansion.
-#        2. 'ode_penalty' controls the size of the extend how the estimated trajectory
-#                fails to satisfy the differential equation exactly given a smoothing
-#                parameter lambda.
-#
-# Input:
-#      basis_coef      :
-#      ode.par         :
-#      input           :
-#      derive.model    :
-#
-# Output:
-#
-#     SSE + ode_penalty :
-#     residual.vec      :
-#
-# Comment:
-#
-#
-#
-#
-#####
+#' @title Inner objective function 
+#' @description An objective function combines the sum of squared error of basis expansion estimates and the penalty controls how those estimates fail to satisfies the ODE model
+#' @usage innerobj_multi(basis_coef, ode.par, input, derive.model,NLS)
+#' @param basis_coef Basis coefficients for interpolating observations given a basis object.
+#' @param ode.par Structural parameters of the ODE model.
+#' @param input Contains dependencies for the optimization, including observations, penalty parameter lambda, and etc..
+#' @param derive.model The function defines the ODE model and is the same as the ode.model in 'PC_ODE'
+#' @param NLS Default is \code{TRUE} so the function returns vector of residuals, and otherwise returns sum of squared errors.
+#'
+#' @return   \item{residual.vec}{Vector of residuals and evaluation of penalty function on quadrature points for approximating the integral.}
+#'
+#' @details something
 innerobj <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
   yobs    <- input[[1]]
   Phi.mat <- input[[2]]
@@ -307,6 +284,18 @@ innerobj <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
 }
 
 
+#' @title Outter objective function 
+#' @description An objective function of the structural parameter computes the measure of fit for the basis expansion. 
+#' @usage outterobj_multi_nls(ode.parameter, basis.initial, derivative.model, inner.input, NLS)
+#' @param ode.parameter Structural parameters of the ODE model. 
+#' @param basis.initial Initial values of the basis coefficients for nonlinear least square optimization. 
+#' @param derivative.model The function defines the ODE model and is the same as the ode.model in 'PC_ODE'
+#' @param inner.input Input that will be passed to the inner objective function. Contains dependencies for the optimization, including observations, penalty parameter lambda, and etc..
+#' @param NLS Default is \code{TRUE} so the function returns vector of residuals, and otherwise returns sum of squared errors.
+#'
+#' @return   \item{residual}{Vector of residuals and evaluation of penalty function on quadrature points for approximating the integral.}
+#'
+#' @details something
 outterobj <- function(ode.parameter, basis.initial, derivative.model, inner.input,NLS){
 
 
@@ -334,44 +323,46 @@ outterobj <- function(ode.parameter, basis.initial, derivative.model, inner.inpu
 
 }
 
-cascade_nls <- function(par.initial, ode.model, basis, observations, obs.times,ode_penalty = 1e6,nquadpts = NULL,controls = NULL){
-
-    #Input:
-    #    par.initial : initial values for structural parameter
-    #    ode.model   : ODE model
-    #    basis       : basis object for approximating x(t)
-    #    observations: observations including a vector indicating times of observations
-    #    nquadpts    : number of quadrature points to use composite Simpson's rule for calculating integral
-
-
-    #Output:
-
-
-
-    #Comment:
+#' @title Parameter Cascade Method for Ordinary Differential Equation Models (Single dimension version)
+#' @description Obtain estiamtes of structural parameters of an ODE model by parameter cascade method.
+#' @usage PC_ODE_1d(data, time, ode.model, par.initial, basis,lambda,controls)
+#' @param        data A data frame or a vector contains observations from the ODE model.
+#' @param         time The vector contain observation times.
+#' @param    ode.model Defined R function that computes the time derivative of the ODE model given observations of states variable.
+#' @param  par.initial Initial value of structural parameters to be optimized.
+#' @param   basis.list A basis objects for smoothing observations. 
+#' @param       lambda Penalty parameter.
+#' @param     controls A list of control parameters. See ‘Details’.
+#'
+#' @return   \item{structural.par}{The structural parameters of the ODE model.}
+#'
+#' @return    \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
+#' @examples PC_ODE_1d (arg1,arg2)
+#' @details something
+#' @export
+PC_ODE_1d <- function(data, time, ode.model, par.initial, basis,lambda = NULL, controls = NULL){
 
     #number of parameters
     npar  <- length(par.initial)
-    #time points of observations
 
 
-    #If no 'quadpts' is given, then set it to 101
-    if (is.null(nquadpts)){
-        nquadpts = 101
-    }
-
+    #Set up default controls for optimizations and quadrature evaluation
+    con.default <- list(nquadpts = 101, smooth.lambda = 1e5, tau = 0.01, tolx = 1e-6,tolg = 1e-6, maxeval = 30)
+    #Replace default with user's input
+    con.default[(namc <- names(controls))] <- controls
+    con.now  <- con.default
 
 
     #Evaluating basis functions at time points of observations
     #and stored as columns in Phi matrix
-    Phi.mat <- eval.basis(obs.times, basis)
+    Phi.mat <- eval.basis(time, basis)
     #Evaluating 1st derivative of basis functions
-    D1.mat <- eval.basis(obs.times, basis,1)
+    D1.mat <- eval.basis(time, basis,1)
     #Evaluating 2nd derivative of basis functions
-    D2.mat <- eval.basis(obs.times, basis,2)
+    D2.mat <- eval.basis(time, basis,2)
 
     #Calculate L2 penalty
-    quadts   <- seq(min(obs.times),max(obs.times),length.out=nquadpts)
+    quadts   <- seq(min(time),max(time),length.out=nquadpts)
     nquad    <- length(quadts)
     quadwts  <- rep(1,nquad)
     even.ind <- seq(2,(nquad-1),by=2)
@@ -388,13 +379,12 @@ cascade_nls <- function(par.initial, ode.model, basis, observations, obs.times,o
     #Initial estimat of basis coefficients
     Rmat = t(Q.D2mat)%*%(Q.D2mat*(quadwts%*%t(rep(1,nbasis))))
     basismat2 = t(Phi.mat)%*%Phi.mat;
-    smooth_lambda = 1e-6   # smoothing parameter
     Bmat    = basismat2 + smooth_lambda*Rmat;
     #Initial basis coefficients
-    initial_coef = ginv(Bmat)%*%t(Phi.mat)%*%observations
+    initial_coef = ginv(Bmat)%*%t(Phi.mat)%*%data
 
     #Passing to inner objective functions and obtain initial value for parameter cascading
-    inner.input = list(observations, Phi.mat, 1e5, Qmat, Q.D1mat,quadts,quadwts)
+    inner.input = list(data, Phi.mat, lambda, Qmat, Q.D1mat,quadts,quadwts)
 
 
 
@@ -406,5 +396,5 @@ cascade_nls <- function(par.initial, ode.model, basis, observations, obs.times,o
       theta.final  <- lsqnonlin(outterobj, par.initial, options = controls,basis.initial = initial_coef, derivative.model = ode.model,inner.input = inner.input,NLS=TRUE)$x
       basiscoef <- lsqnonlin(innerobj, initial_coef, ode.par = theta.final, derive.model = ode.model, input = inner.input,NLS = TRUE)$x
 
-    return(list(structural.par = theta.final, nuisance.par = basiscoef))
+    return(list(structural.par = theta.final, nuissance.par = basiscoef))
 }
