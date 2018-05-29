@@ -18,48 +18,54 @@
 #' @details something
 #' @export
 PC_ODE <- function(data, time, ode.model,par.names,state.names,  par.initial, basis.list, lambda = NULL,controls = NULL){
+      if(length(state.names) == 1 ){
+           result <- PC_ODE_1d(data = data, time = time, ode.model = ode.model, par.initial = par.initial,
+                               basis = basis.list, lambda = lambda, controls = controls)
+           return(list(structural.par = result$structural.par, nuissance.par = result$nuissance.par))
+        }else{
+           #Set up default controls for optimizations and quadrature evaluation
+          con.default <- list(nquadpts = 101, smooth.lambda = 1e5, tau = 0.01, tolx = 1e-6,tolg = 1e-6, maxeval = 30)
+          #Replace default with user's input
+          con.default[(namc <- names(controls))] <- controls
+          con.now  <- con.default
 
-      #Set up default controls for optimizations and quadrature evaluation
-      con.default <- list(nquadpts = 101, smooth.lambda = 1e5, tau = 0.01, tolx = 1e-6,tolg = 1e-6, maxeval = 30)
-      #Replace default with user's input
-      con.default[(namc <- names(controls))] <- controls
-      con.now  <- con.default
+          
+          #Evaluate basis functiosn for each state variable
+          basis.eval.list <- lapply(basis.list, prepare_basis, times = time, nquadpts = con.now$nquadpts)
+
+          #Number of dimensions of the ODE model
+          ndim <- ncol(data)
+
+          #Some initializations
+          inner.input  <- list()
+          initial_coef <- list()
+
+          for (ii in 1:ndim){
+            #For each dimension, obtain initial value for the nuissance parameters or the basis coefficients
+            Rmat = t(basis.eval.list[[ii]]$Q.D2mat)%*%(basis.eval.list[[ii]]$Q.D2mat*(basis.eval.list[[ii]]$quadwts%*%t(rep(1,basis.list[[ii]]$nbasis))))
+            basismat2 = t(basis.eval.list[[ii]]$Phi.mat)%*%basis.eval.list[[ii]]$Phi.mat;
+            Bmat    = basismat2 + con.now$smooth_lambda*Rmat;
+            #Initial basis coefficients
+            initial_coef[[ii]] = ginv(Bmat)%*%t(basis.eval.list[[ii]]$Phi.mat)%*%data[,ii]
+            inner.input[[ii]]  = list(data[,ii], basis.eval.list[[ii]]$Phi.mat, lambda,
+                                      basis.eval.list[[ii]]$Qmat, basis.eval.list[[ii]]$Q.D1mat,
+                                      basis.eval.list[[ii]]$quadts, basis.eval.list[[ii]]$quadwts,time,
+                                      state.names,model.names)
+          }
 
 
-      #Evaluate basis functiosn for each state variable
-      basis.eval.list <- lapply(basis.list, prepare_basis, times = time, nquadpts = con.now$nquadpts)
+          #Searching for a better starting value for optimization
+          #temp <- lsqnonlin(innerobj_multi, unlist(initial_coef), ode.par = par.initial, derive.model = ode.model, input = inner.input, NLS=TRUE,options = list(tau = 0.01))$x
 
-      #Number of dimensions of the ODE model
-      ndim <- ncol(data)
+          #Running optimization for outter objective function to obtain structural parameter
+          par.final <- lsqnonlin(options = list(maxeval = con.now$maxeval,tau = con.now$tau),outterobj_multi_nls, par.initial,basis.initial = unlist(initial_coef), derivative.model = ode.model, inner.input = inner.input)$x
+          #Condition on the obtained structural parameter, calculate the nuissance parameter or the basis coefficients to interpolate data
+          basis.coef.final <- lsqnonlin(innerobj_multi, unlist(initial_coef), ode.par = par.final, derive.model = ode.model, input = inner.input, NLS=TRUE,options = list(tau =0.01))$x
 
-      #Some initializations
-      inner.input  <- list()
-      initial_coef <- list()
 
-      for (ii in 1:ndim){
-        #For each dimension, obtain initial value for the nuissance parameters or the basis coefficients
-        Rmat = t(basis.eval.list[[ii]]$Q.D2mat)%*%(basis.eval.list[[ii]]$Q.D2mat*(basis.eval.list[[ii]]$quadwts%*%t(rep(1,basis.list[[ii]]$nbasis))))
-        basismat2 = t(basis.eval.list[[ii]]$Phi.mat)%*%basis.eval.list[[ii]]$Phi.mat;
-        Bmat    = basismat2 + con.now$smooth_lambda*Rmat;
-        #Initial basis coefficients
-        initial_coef[[ii]] = ginv(Bmat)%*%t(basis.eval.list[[ii]]$Phi.mat)%*%data[,ii]
-        inner.input[[ii]]  = list(data[,ii], basis.eval.list[[ii]]$Phi.mat, lambda,
-                                  basis.eval.list[[ii]]$Qmat, basis.eval.list[[ii]]$Q.D1mat,
-                                  basis.eval.list[[ii]]$quadts, basis.eval.list[[ii]]$quadwts,time,
-                                  state.names,model.names)
+          return(list(structural.par = par.final, nuissance.par = basis.coef.final))
       }
-
-
-      #Searching for a better starting value for optimization
-      #temp <- lsqnonlin(innerobj_multi, unlist(initial_coef), ode.par = par.initial, derive.model = ode.model, input = inner.input, NLS=TRUE,options = list(tau = 0.01))$x
-
-      #Running optimization for outter objective function to obtain structural parameter
-      par.final <- lsqnonlin(options = list(maxeval = con.now$maxeval,tau = con.now$tau),outterobj_multi_nls, par.initial,basis.initial = unlist(initial_coef), derivative.model = ode.model, inner.input = inner.input)$x
-      #Condition on the obtained structural parameter, calculate the nuissance parameter or the basis coefficients to interpolate data
-      basis.coef.final <- lsqnonlin(innerobj_multi, unlist(initial_coef), ode.par = par.final, derive.model = ode.model, input = inner.input, NLS=TRUE,options = list(tau =0.01))$x
-
-
-      return(list(structural.par = par.final, nuissance.par = basis.coef.final))
+      
 }
 
 
