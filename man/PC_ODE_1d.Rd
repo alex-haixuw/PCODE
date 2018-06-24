@@ -15,11 +15,11 @@ PC_ODE_1d(data, time, ode.model, par.initial, basis,lambda,controls)
 
 \item{par.initial}{Initial value of structural parameters to be optimized.}
 
+\item{basis}{A basis objects for smoothing observations.}
+
 \item{lambda}{Penalty parameter.}
 
 \item{controls}{A list of control parameters. See ‘Details’.}
-
-\item{basis.list}{A basis objects for smoothing observations.}
 }
 \value{
 \item{structural.par}{The structural parameters of the ODE model.}

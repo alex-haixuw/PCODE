@@ -56,12 +56,12 @@ PC_ODE <- function(data, time, ode.model,par.names,state.names,  par.initial, ba
 
 
           #Searching for a better starting value for optimization
-          #temp <- lsqnonlin(innerobj_multi, unlist(initial_coef), ode.par = par.initial, derive.model = ode.model, input = inner.input, NLS=TRUE,options = list(tau = 0.01))$x
+          #temp <- nls_optimize(innerobj_multi, unlist(initial_coef), ode.par = par.initial, derive.model = ode.model, input = inner.input, NLS=TRUE,options = list(tau = 0.01))$x
 
           #Running optimization for outter objective function to obtain structural parameter
-          par.final <- lsqnonlin(options = list(maxeval = con.now$maxeval,tau = con.now$tau),outterobj_multi_nls, par.initial,basis.initial = unlist(initial_coef), derivative.model = ode.model, inner.input = inner.input)$x
+          par.final <- nls_optimize(options = list(maxeval = con.now$maxeval,tau = con.now$tau),outterobj_multi_nls, par.initial,basis.initial = unlist(initial_coef), derivative.model = ode.model, inner.input = inner.input)$par
           #Condition on the obtained structural parameter, calculate the nuissance parameter or the basis coefficients to interpolate data
-          basis.coef.final <- lsqnonlin(innerobj_multi, unlist(initial_coef), ode.par = par.final, derive.model = ode.model, input = inner.input, NLS=TRUE,options = list(tau =0.01))$x
+          basis.coef.final <- nls_optimize(innerobj_multi, unlist(initial_coef), ode.par = par.final, derive.model = ode.model, input = inner.input, NLS=TRUE,options = list(tau =0.01))$par
 
 
           return(list(structural.par = par.final, nuissance.par = basis.coef.final))
@@ -202,7 +202,7 @@ innerobj_multi  <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
 outterobj_multi_nls <- function(ode.parameter, basis.initial, derivative.model, inner.input,NLS=TRUE){
   #Convergence of basis coefficients seems to happen before 'maxeval'.
 
-  inner_coef <- lsqnonlin(innerobj_multi, basis.initial, ode.par = ode.parameter, derive.model = derivative.model, options = list(maxeval = 100,tolx=1e-6,tolg=1e-6), input = inner.input)$x
+  inner_coef <- nls_optimize(innerobj_multi, basis.initial, ode.par = ode.parameter, derive.model = derivative.model, options = list(maxeval = 100,tolx=1e-6,tolg=1e-6), input = inner.input,verbal=2)$par
   ndim     <- length(inner.input)
   npoints  <- length(inner.input[[1]][[8]])
   basisnumber   <- rep(NA, ndim+1)
@@ -307,7 +307,7 @@ outterobj <- function(ode.parameter, basis.initial, derivative.model, inner.inpu
 
 
   if (NLS){
-    inner_coef  <- lsqnonlin(innerobj, basis.initial, options=list(maxeval = 50),ode.par = ode.parameter,derive.model = derivative.model, input = inner.input)$x
+    inner_coef  <- nls_optimize(innerobj, basis.initial, options=list(maxeval = 50),ode.par = ode.parameter,derive.model = derivative.model, input = inner.input)$par
   }else{
     inner_coef <- optim(par=basis.initial, fn=innerobj,ode.par = ode.parameter, derive.model = derivative.model, input = inner.input,NLS = FALSE,
                         control = list(abstol=1e-10))$par
@@ -389,12 +389,126 @@ PC_ODE_1d <- function(data, time, ode.model, par.initial, basis,lambda = NULL, c
 
 
       #Using nonlinear least square for optimization
-      temp <- lsqnonlin(innerobj, initial_coef, ode.par = par.initial, derive.model = ode.model, input = inner.input,NLS = TRUE)
-      new.ini.basiscoef <- matrix(temp$x,length(temp$x),1)
+      #temp <- nls_optimize(innerobj, initial_coef, ode.par = par.initial, derive.model = ode.model, input = inner.input,NLS = TRUE)
+      #new.ini.basiscoef <- matrix(temp$par,length(temp$par),1)
       #--------------------------------------------------------
 
-      theta.final  <- lsqnonlin(outterobj, par.initial,basis.initial = initial_coef, derivative.model = ode.model,inner.input = inner.input,NLS=TRUE)$x
-      basiscoef <- lsqnonlin(innerobj, initial_coef, ode.par = theta.final, derive.model = ode.model, input = inner.input,NLS = TRUE)$x
+      theta.final  <- nls_optimize(outterobj, par.initial,basis.initial = initial_coef, derivative.model = ode.model,inner.input = inner.input,NLS=TRUE,verbal = 1)$par
+
+      basiscoef <- nls_optimize(innerobj, initial_coef, ode.par = theta.final, derive.model = ode.model, input = inner.input,NLS = TRUE,verbal=FALSE)$par
 
     return(list(structural.par = theta.final, nuissance.par = basiscoef))
+}
+
+#' @title       Optimizer for non-linear least square problems
+#' @description Obtain the solution to minimize the sum of squared errors of the defined function \code{fun} by levenberg-marquardt method.
+#' @usage       nls_optimize(fun, x0, ..., options)
+#' @param       fun The function returns the vector of weighted residuals.
+#' @param       x0  The initial value for optimization.
+#' @param       ... Parameters to be passed for \code{fun}
+#' @param       options Additional optimization controls.
+#'
+#' @return   \item{par}{The solution to the non-linear least square problem, the same size as \code{x0}}
+#'
+#' @examples PC_ODE_1d (arg1,arg2)
+#' @details something
+nls_optimize <- function (fun, x0, options = list(), ...,verbal=FALSE){
+    stopifnot(is.numeric(x0))
+    opts <- list(tau = 0.001, tolx = 1e-08, tolg = 1e-08, maxeval = 700)
+    namedOpts <- match.arg(names(options), choices = names(opts),
+        several.ok = TRUE)
+    if (!is.null(names(options)))
+        opts[namedOpts] <- options
+    tau <- opts$tau
+    tolx <- opts$tolx
+    tolg <- opts$tolg
+    maxeval <- opts$maxeval
+    fct <- match.fun(fun)
+    fun <- function(x) fct(x, ...)
+    n <- length(x0)
+    m <- length(fun(x0))
+    x <- x0
+    r <- fun(x)
+    f <- 0.5 * sum(r^2)
+    J <- jacobian(fun, x)
+    g <- t(J) %*% r
+    ng <- Norm(g, Inf)
+    A <- t(J) %*% J
+    mu <- tau * max(diag(A))
+    nu <- 2
+    nh <- 0
+    errno <- 0
+    k <- 1
+    if (verbal == 1){
+      print('#######################################')
+      print('Starting optimization')
+      print('#######################################')
+    }
+    if (verbal == 2){
+      pb <- txtProgressBar(0, maxeval, style = 3)
+    }
+
+    while (k < maxeval) {
+
+        if (k == 1){
+           if (verbal == 1){
+            print(paste('Current iteration: ',k,collapse = ''))
+            print(paste('Current function value: ', round(2*f,digits = 6), collapse=''))
+        }
+        }
+        if (verbal == 2){
+          setTxtProgressBar(pb, k)
+        }
+        k <- k + 1
+        R <- chol(A + mu * eye(n))
+        h <- c(-t(g) %*% chol2inv(R))
+        nh <- Norm(h)
+        nx <- tolx + Norm(x)
+        if (nh <= tolx * nx) {
+            errno <- 1
+            break
+        }
+        xnew <- x + h
+        h <- xnew - x
+        dL <- sum(h * (mu * h - g))/2
+        rn <- fun(xnew)
+        fn <- 0.5 * sum(rn^2)
+        if (verbal == 1){
+            print(paste('Current iteration: ',k,collapse = ''))
+            print(paste('Current function value: ', round(2*fn,digits = 6), collapse=''))
+        }
+
+        Jn <- jacobian(fun, xnew)
+        if (length(rn) != length(r)) {
+            df <- f - fn
+        }
+        else {
+            df <- sum((r - rn) * (r + rn))/2
+        }
+        if (dL > 0 && df > 0) {
+            x <- xnew
+            f <- fn
+            J <- Jn
+            r <- rn
+            A <- t(J) %*% J
+            g <- t(J) %*% r
+            ng <- Norm(g, Inf)
+            mu <- mu * max(1/3, 1 - (2 * df/dL - 1)^3)
+            nu <- 2
+        }
+        else {
+            mu <- mu * nu
+            nu <- 2 * nu
+        }
+        if (ng <= tolg) {
+            errno <- 2
+            break
+        }
+    }
+    if (k >= maxeval)
+        errno <- 3
+    errmess <- switch(errno, "Stopped by small x-step.", "Stopped by small gradient.",
+        "No. of function evaluations exceeded.")
+    return(list(par = c(xnew), ssq = sum(fun(xnew)^2), ng = ng,
+        nh = nh, mu = mu, neval = k, errno = errno, errmess = errmess))
 }
