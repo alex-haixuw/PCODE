@@ -19,7 +19,7 @@
 #' @export
 PC_ODE <- function(data, time, ode.model,par.names,state.names,  par.initial, basis.list, lambda = NULL,controls = NULL){
     #Set up default controls for optimizations and quadrature evaluation
-    con.default <- list(nquadpts = 101, smooth.lambda = 1e5, tau = 0.01, tolx = 1e-6,tolg = 1e-6, maxeval = 30)
+    con.default <- list(nquadpts = 101, smooth.lambda = 1e2, tau = 0.01, tolx = 1e-6,tolg = 1e-6, maxeval = 20)
     #Replace default with user's input
     con.default[(namc <- names(controls))] <- controls
     con.now  <- con.default
@@ -59,9 +59,9 @@ PC_ODE <- function(data, time, ode.model,par.names,state.names,  par.initial, ba
           #temp <- nls_optimize(innerobj_multi, unlist(initial_coef), ode.par = par.initial, derive.model = ode.model, input = inner.input, NLS=TRUE,options = list(tau = 0.01))$x
 
           #Running optimization for outter objective function to obtain structural parameter
-          par.final <- nls_optimize(options = list(maxeval = con.now$maxeval,tau = con.now$tau),outterobj_multi_nls, par.initial,basis.initial = unlist(initial_coef), derivative.model = ode.model, inner.input = inner.input)$par
+          par.final <- nls_optimize(options = list(maxeval = con.now$maxeval,tau = con.now$tau),outterobj_multi_nls, par.initial,basis.initial = unlist(initial_coef), derivative.model = ode.model, inner.input = inner.input,verbal = 1)$par
           #Condition on the obtained structural parameter, calculate the nuissance parameter or the basis coefficients to interpolate data
-          basis.coef.final <- nls_optimize(innerobj_multi, unlist(initial_coef), ode.par = par.final, derive.model = ode.model, input = inner.input, NLS=TRUE,options = list(tau =0.01))$par
+          basis.coef.final <- nls_optimize.inner(innerobj_multi, unlist(initial_coef), ode.par = par.final, derive.model = ode.model, input = inner.input, NLS=TRUE,options = list(tau =0.01))$par
 
 
           return(list(structural.par = par.final, nuissance.par = basis.coef.final))
@@ -202,7 +202,7 @@ innerobj_multi  <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
 outterobj_multi_nls <- function(ode.parameter, basis.initial, derivative.model, inner.input,NLS=TRUE){
   #Convergence of basis coefficients seems to happen before 'maxeval'.
 
-  inner_coef <- nls_optimize(innerobj_multi, basis.initial, ode.par = ode.parameter, derive.model = derivative.model, options = list(maxeval = 100,tolx=1e-6,tolg=1e-6), input = inner.input,verbal=2)$par
+  inner_coef <- nls_optimize.inner(innerobj_multi, basis.initial, ode.par = ode.parameter, derive.model = derivative.model, options = list(maxeval = 30,tolx=1e-6,tolg=1e-6), input = inner.input,verbal=2)$par
   ndim     <- length(inner.input)
   npoints  <- length(inner.input[[1]][[8]])
   basisnumber   <- rep(NA, ndim+1)
@@ -395,13 +395,13 @@ PC_ODE_1d <- function(data, time, ode.model, par.initial, basis,lambda = NULL, c
 
       theta.final  <- nls_optimize(outterobj, par.initial,basis.initial = initial_coef, derivative.model = ode.model,inner.input = inner.input,NLS=TRUE,verbal = 1)$par
 
-      basiscoef <- nls_optimize(innerobj, initial_coef, ode.par = theta.final, derive.model = ode.model, input = inner.input,NLS = TRUE,verbal=FALSE)$par
+      basiscoef <- nls_optimize(innerobj, initial_coef, ode.par = theta.final, derive.model = ode.model, input = inner.input,NLS = TRUE,verbal=1)$par
 
     return(list(structural.par = theta.final, nuissance.par = basiscoef))
 }
 
 #' @title       Optimizer for non-linear least square problems
-#' @description Obtain the solution to minimize the sum of squared errors of the defined function \code{fun} by levenberg-marquardt method.
+#' @description Obtain the solution to minimize the sum of squared errors of the defined function \code{fun} by levenberg-marquardt method. Adapted from PRACMA package.
 #' @usage       nls_optimize(fun, x0, ..., options)
 #' @param       fun The function returns the vector of weighted residuals.
 #' @param       x0  The initial value for optimization.
@@ -412,9 +412,9 @@ PC_ODE_1d <- function(data, time, ode.model, par.initial, basis,lambda = NULL, c
 #'
 #' @examples PC_ODE_1d (arg1,arg2)
 #' @details something
-nls_optimize <- function (fun, x0, options = list(), ...,verbal=FALSE){
+nls_optimize <- function (fun, x0, options = list(), ...,verbal=1){
     stopifnot(is.numeric(x0))
-    opts <- list(tau = 0.001, tolx = 1e-08, tolg = 1e-08, maxeval = 700)
+    opts <- list(tau = 0.001, tolx = 1e-08, tolg = 1e-08, maxeval = 20)
     namedOpts <- match.arg(names(options), choices = names(opts),
         several.ok = TRUE)
     if (!is.null(names(options)))
@@ -444,9 +444,7 @@ nls_optimize <- function (fun, x0, options = list(), ...,verbal=FALSE){
       print('Starting optimization')
       print('#######################################')
     }
-    if (verbal == 2){
-      pb <- txtProgressBar(0, maxeval, style = 3)
-    }
+
 
     while (k < maxeval) {
 
@@ -456,9 +454,7 @@ nls_optimize <- function (fun, x0, options = list(), ...,verbal=FALSE){
             print(paste('Current function value: ', round(2*f,digits = 6), collapse=''))
         }
         }
-        if (verbal == 2){
-          setTxtProgressBar(pb, k)
-        }
+
         k <- k + 1
         R <- chol(A + mu * eye(n))
         h <- c(-t(g) %*% chol2inv(R))
@@ -511,4 +507,191 @@ nls_optimize <- function (fun, x0, options = list(), ...,verbal=FALSE){
         "No. of function evaluations exceeded.")
     return(list(par = c(xnew), ssq = sum(fun(xnew)^2), ng = ng,
         nh = nh, mu = mu, neval = k, errno = errno, errmess = errmess))
+}
+
+#' @title       Optimizer for non-linear least square problems (for inner objective functions)
+#' @description Obtain the solution to minimize the sum of squared errors of the defined function \code{fun} by levenberg-marquardt method. Adapted from PRACMA package.
+#' @usage       nls_optimize.inner(fun, x0, ..., options)
+#' @param       fun The function returns the vector of weighted residuals.
+#' @param       x0  The initial value for optimization.
+#' @param       ... Parameters to be passed for \code{fun}
+#' @param       options Additional optimization controls.
+#'
+#' @return   \item{par}{The solution to the non-linear least square problem, the same size as \code{x0}}
+#'
+#' @examples PC_ODE_1d (arg1,arg2)
+#' @details something
+nls_optimize.inner <- function (fun, x0, options = list(), ...,verbal=FALSE){
+    stopifnot(is.numeric(x0))
+    opts <- list(tau = 0.001, tolx = 1e-08, tolg = 1e-08, maxeval = 20)
+    namedOpts <- match.arg(names(options), choices = names(opts),
+        several.ok = TRUE)
+    if (!is.null(names(options)))
+        opts[namedOpts] <- options
+    tau <- opts$tau
+    tolx <- opts$tolx
+    tolg <- opts$tolg
+    maxeval <- opts$maxeval
+    fct <- match.fun(fun)
+    fun <- function(x) fct(x, ...)
+    n <- length(x0)
+    m <- length(fun(x0))
+    x <- x0
+    r <- fun(x)
+    f <- 0.5 * sum(r^2)
+    J <- jacobian(fun, x)
+    g <- t(J) %*% r
+    ng <- Norm(g, Inf)
+    A <- t(J) %*% J
+    mu <- tau * max(diag(A))
+    nu <- 2
+    nh <- 0
+    errno <- 0
+    k <- 1
+    if (verbal == 1){
+      print('#######################################')
+      print('Starting optimization')
+      print('#######################################')
+    }
+
+    while (k < maxeval) {
+
+        if (k == 1){
+           if (verbal == 1){
+            print(paste('Current iteration: ',k,collapse = ''))
+            print(paste('Current function value: ', round(2*f,digits = 6), collapse=''))
+        }
+        }
+
+        k <- k + 1
+        R <- chol(A + mu * eye(n))
+        h <- c(-t(g) %*% chol2inv(R))
+        nh <- Norm(h)
+        nx <- tolx + Norm(x)
+        if (nh <= tolx * nx) {
+            errno <- 1
+            break
+        }
+        xnew <- x + h
+        h <- xnew - x
+        dL <- sum(h * (mu * h - g))/2
+        rn <- fun(xnew)
+        fn <- 0.5 * sum(rn^2)
+        if (verbal == 1){
+            print(paste('Current iteration: ',k,collapse = ''))
+            print(paste('Current function value: ', round(2*fn,digits = 6), collapse=''))
+        }
+
+        Jn <- jacobian(fun, xnew)
+        if (length(rn) != length(r)) {
+            df <- f - fn
+        }
+        else {
+            df <- sum((r - rn) * (r + rn))/2
+        }
+        if (dL > 0 && df > 0) {
+            x <- xnew
+            f <- fn
+            J <- Jn
+            r <- rn
+            A <- t(J) %*% J
+            g <- t(J) %*% r
+            ng <- Norm(g, Inf)
+            mu <- mu * max(1/3, 1 - (2 * df/dL - 1)^3)
+            nu <- 2
+        }
+        else {
+            mu <- mu * nu
+            nu <- 2 * nu
+        }
+        if (ng <= tolg) {
+            errno <- 2
+            break
+        }
+    }
+    if (k >= maxeval)
+        errno <- 3
+    errmess <- switch(errno, "Stopped by small x-step.", "Stopped by small gradient.",
+        "No. of function evaluations exceeded.")
+    return(list(par = c(xnew), ssq = sum(fun(xnew)^2), ng = ng,
+        nh = nh, mu = mu, neval = k, errno = errno, errmess = errmess))
+}
+
+#' @title       Cross-validation for sparsity parameter lambda
+#' @description Obtain the optial sparsity parameter given a search grid
+#' @usage
+#' @param data A data frame or matrix contrain observations from each dimension of the ODE model.
+#' @param         time The vector contain observation times or a matrix if time points are different between dimensions.
+#' @param    ode.model Defined R function that computes the time derivative of the ODE model given observations of states variable.
+#' @param    par.names The names of structural parameters defined in the 'ode.model'.
+#' @param  state.names The names of state variables defined in the 'ode.model'.
+#' @param  par.initial Initial value of structural parameters to be optimized.
+#' @param   basis.list A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.
+#' @param lambda_grid A search grid for finding the optimial sparsity parameter lambda.
+#' @param cv_points A number indicating how many data points (>= 5) will be saved for doing cross validation. Default is set at 5 as minimum.
+#' @param     controls A list of control parameters. See ‘Details’.
+
+#'
+#' @return
+#'
+#' @examples
+#' @details
+cv_lambda <- function(data, time, ode.model, par.names, state.names,
+                      par.initial, basis.list, lambda_grid, cv_points, controls = NULL){
+
+    #Keep some observations for cross validation:
+    #Identifying time points
+    time.keep <- time[ceiling(seq(1,length(time),length.out=(cv_points+2))[-c(1,(cv_points+2))])]
+    #Seperate data into two parts
+    data.keep <- data[time.keep,]
+    data.fit  <- data[-time.keep,]
+
+
+    cv.score     <- rep(NA, cv_points)
+
+    pcode.result <- list()
+    for (jj in 1:length(lambda_grid)){
+          pcode.result[[jj]] <- PC_ODE(data = data.fit, time = time[-time.keep], ode.model = ode.model,
+                                      par.names = par.names, state.names = state.names, basis.list = basis.list,
+                                      par.initial = par.initial, lambda = lambda_grid[jj],
+                                      controls = controls)
+
+         par.res <- pcode.result[[jj]]$structural.par
+         names(par.res) <- par.names
+         nui.res <- pcode.result[[jj]]$nuissance.par
+
+          pred.mat           <- matrix(NA, nrow = cv_points,ncol = length(state.names))
+          colnames(pred.mat) <- state.names
+
+          pred.derive.mat    <- matrix(NA, nrow = cv_points,ncol = length(state.names))
+
+          index    <- rep(NA, length(par.names)+1)
+          index[1] <- 0
+
+          for (kk in 1:length(state.names)){
+              #evaluation of basis object
+              phi.temp <- eval.basis(time.keep, basis.list[[kk]])
+              #evaluation of first derivative of basis object
+              der.temp <- eval.basis(time.keep, basis.list[[kk]],1)
+              index[kk+1] <- basis.list[[kk]]$nbasis
+              basis.coef <- nui.res[(index[kk]+1):(index[kk]+index[kk+1])]
+
+              pred.mat[,kk]        <- basis.coef %*% phi.temp
+              pred.derive.mat[,kk] <- basis.coef %*% der.temp
+          }
+
+          #Evaluate the ode model given state and parameter
+          ode.eval <- matrix(NA, nrow = nrow(pred.derive.mat), ncol = ncol(pred.derive.mat))
+          for (jk in 1:cv_points){
+            ode.eval[jk,] <- unlist(ode.model(state = pred.mat[jk,],parameters = par.rer))
+          }
+          temp <- apply((pred.derive.mat - ode.eval),2, function(x) {mean(x^2)})
+          cv.score[jj] <- sum(temp^2)
+
+    }
+
+    return(list(cv.score = cv.score, lambda_grid = lambda_grid))
+
+
+
 }
