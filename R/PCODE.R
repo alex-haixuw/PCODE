@@ -1,9 +1,9 @@
 #' @title Parameter Cascade Method for Ordinary Differential Equation Models
-#' @description Obtain estiamtes of structural parameters of an ODE model by parameter cascade method.
+#' @description Obtain estiamtes of both structural and nuissance paarmeters of an ODE model by parameter cascade method.
 #' @usage PC_ODE(data, time, ode.model, par.names, state.names, \cr        par.initial, basis.list,lambda,controls)
 #' @param        data A data frame or a matrix contain observations from each dimension of the ODE model.
-#' @param         time The vector contain observation times or a matrix if time points are different between dimensions.
-#' @param    ode.model Defined R function that computes the time derivative of the ODE model given observations of states variable.
+#' @param         time A vector contain observation times or a matrix if time points are different between dimensions.
+#' @param    ode.model An R function that computes the time derivative of the ODE model given observations of states variable and structural parameters.
 #' @param    par.names The names of structural parameters defined in the 'ode.model'.
 #' @param  state.names The names of state variables defined in the 'ode.model'.
 #' @param  par.initial Initial value of structural parameters to be optimized.
@@ -11,11 +11,13 @@
 #' @param       lambda Penalty parameter.
 #' @param     controls A list of control parameters. See ‘Details’.
 #'
+#' @details something
+#'
 #' @return   \item{structural.par}{The structural parameters of the ODE model.}
 #'
 #' @return    \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
-#' @examples PC_ODE(arg1,arg2)
-#' @details something
+#' @examples
+#' 
 #' @export
 PC_ODE <- function(data, time, ode.model,par.names,state.names,  par.initial, basis.list, lambda = NULL,controls = NULL){
     #Set up default controls for optimizations and quadrature evaluation
@@ -202,7 +204,7 @@ innerobj_multi  <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
 outterobj_multi_nls <- function(ode.parameter, basis.initial, derivative.model, inner.input,NLS=TRUE){
   #Convergence of basis coefficients seems to happen before 'maxeval'.
 
-  inner_coef <- nls_optimize.inner(innerobj_multi, basis.initial, ode.par = ode.parameter, derive.model = derivative.model, options = list(maxeval = 30,tolx=1e-6,tolg=1e-6), input = inner.input,verbal=2)$par
+  inner_coef <- nls_optimize.inner(innerobj_multi, basis.initial, ode.par = ode.parameter, derive.model = derivative.model, options = list(maxeval = 50,tolx=1e-6,tolg=1e-6), input = inner.input,verbal=2)$par
   ndim     <- length(inner.input)
   npoints  <- length(inner.input[[1]][[8]])
   basisnumber   <- rep(NA, ndim+1)
@@ -414,7 +416,7 @@ PC_ODE_1d <- function(data, time, ode.model, par.initial, basis,lambda = NULL, c
 #' @details something
 nls_optimize <- function (fun, x0, options = list(), ...,verbal=1){
     stopifnot(is.numeric(x0))
-    opts <- list(tau = 0.001, tolx = 1e-08, tolg = 1e-08, maxeval = 20)
+    opts <- list(tau = 0.001, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
     namedOpts <- match.arg(names(options), choices = names(opts),
         several.ok = TRUE)
     if (!is.null(names(options)))
@@ -523,7 +525,7 @@ nls_optimize <- function (fun, x0, options = list(), ...,verbal=1){
 #' @details something
 nls_optimize.inner <- function (fun, x0, options = list(), ...,verbal=FALSE){
     stopifnot(is.numeric(x0))
-    opts <- list(tau = 0.001, tolx = 1e-08, tolg = 1e-08, maxeval = 20)
+    opts <- list(tau = 0.001, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
     namedOpts <- match.arg(names(options), choices = names(opts),
         several.ok = TRUE)
     if (!is.null(names(options)))
@@ -691,7 +693,6 @@ cv_lambda <- function(data, time, ode.model, par.names, state.names,
     }
 
     return(list(cv.score = cv.score, lambda_grid = lambda_grid))
-
 
 
 }
