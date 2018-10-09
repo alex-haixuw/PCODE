@@ -29,9 +29,3 @@ PC_ODE_1d(data, time, ode.model, par.initial, basis,lambda,controls)
 \description{
 Obtain estiamtes of structural parameters of an ODE model by parameter cascade method.
 }
-\details{
-something
-}
-\examples{
-PC_ODE_1d (arg1,arg2)
-}

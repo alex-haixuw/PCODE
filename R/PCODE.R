@@ -8,16 +8,64 @@
 #' @param  state.names The names of state variables defined in the 'ode.model'.
 #' @param  par.initial Initial value of structural parameters to be optimized.
 #' @param   basis.list A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.
-#' @param       lambda Penalty parameter.
+#' @param    lambda Penalty parameter.
 #' @param     controls A list of control parameters. See ‘Details’.
 #'
-#' @details something
+#' @details The \code{controls} argument is a list providing addition inputs for the nonlinear least square optimizer:
+#' \itemize{
+#'\item \code{nquadpts} Determine the number of quadrature points for approximating an integral. Default is 101.
+#'\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuissance parameters.
+#'\item \code{tau} Initial value of Marquardt parameter. Small values indicate good initial values for structural parameters.
+#'\item \code{tolx} Tolerance for parameters of objective functions. Default is set at 1e-6.
+#'\item \code{tolg} Tolerance for the gradient of parameters of objective functions. Default is set at 1e-6.
+#'\item \code{maxeval} The maximum number of evaluation of the optimizer. Default is set at 20.
+#'}
+#'
 #'
 #' @return   \item{structural.par}{The structural parameters of the ODE model.}
 #'
 #' @return    \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
-#' @examples
-#' 
+#' @examples require(FDA)
+#'require(deSolve)
+#'
+#'#Define the FitzHugh-Nagumo model
+#'model.par   <- c(a=0.2,b=0.2,c=3)
+#'state       <- c(V=-1,R=1)
+#'Dmodel <- function(state,parameters){
+#'with(as.list(c(state,parameters)),
+#'   {
+#'      dV <- c*(V - (V^3)/3 + R)
+#'      dR <- -(1/c) * (V - a + b*R)
+#'      return(list(c(dV,dR)))
+#'    })}
+#'#Observation points
+#'times <- seq(0,20,length.out=11)
+#'#Generate ODE observations
+#'desolve.mod <- ode(y=state,times=times,func=ode.model,parms = model.par)
+#'
+#'nobs  <- length(times)
+#'scale <- 0.1
+#'noise <- scale*rnorm(n = nobs, mean = 0 , sd = 1)
+#'#Add some noises to data
+#'observ <- matrix(NA, nrow = length(times),ncol =3)
+#'observ[,1] <- times
+#'observ[,2] <- desolve.mod[,2] + noise
+#'observ[,3] <- desolve.mod[,3] + noise
+#'
+#'#Define basis for each dimension
+#'knots <- seq(0,20,length.out=11)
+#'#order of basis functions
+#'norder <- 4
+#'#number of basis funtions
+#'nbasis <- length(knots) + norder - 2
+#'#creating basis
+#'basis <- create.bspline.basis(c(0,20),nbasis,norder,breaks = knots)
+#'basis.list <- list(basis,basis)
+#'
+#'pcode.result <- PC_ODE(data = observ[,2:3], time= observ[,1], ode.model = Dmodel, par.names = c('a','b','c'),
+#'                       state.names = c('V','R'), par.initial = rnorm(3),lambda = 1e2,basis.list = basis.list,
+#'                       controls = list(smooth.lambda = 1e2,verbal = 1,maxeval = 200))
+
 #' @export
 PC_ODE <- function(data, time, ode.model,par.names,state.names,  par.initial, basis.list, lambda = NULL,controls = NULL){
     #Set up default controls for optimizations and quadrature evaluation
@@ -88,7 +136,6 @@ PC_ODE <- function(data, time, ode.model,par.names,state.names,  par.initial, ba
 #' @return   \item{quadwts}{Quadrature weights.}
 #'
 #' @examples lapply(basis.list, prepare_basis, times = time, nquadpts = nquadpts)
-#' @details something
 prepare_basis <- function(basis, times, nquadpts){
 
   #Evaluate basis functions over observation time points
@@ -126,8 +173,6 @@ prepare_basis <- function(basis, times, nquadpts){
 #' @param NLS Default is \code{TRUE} so the function returns vector of residuals, and otherwise returns sum of squared errors.
 #'
 #' @return   \item{residual.vec}{Vector of residuals and evaluation of penalty function on quadrature points for approximating the integral.}
-#'
-#' @details something
 innerobj_multi  <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
 
 
@@ -200,7 +245,6 @@ innerobj_multi  <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
 #'
 #' @return   \item{residual}{Vector of residuals and evaluation of penalty function on quadrature points for approximating the integral.}
 #'
-#' @details something
 outterobj_multi_nls <- function(ode.parameter, basis.initial, derivative.model, inner.input,NLS=TRUE){
   #Convergence of basis coefficients seems to happen before 'maxeval'.
 
@@ -246,7 +290,6 @@ outterobj_multi_nls <- function(ode.parameter, basis.initial, derivative.model, 
 #'
 #' @return   \item{residual.vec}{Vector of residuals and evaluation of penalty function on quadrature points for approximating the integral.}
 #'
-#' @details something
 innerobj <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
   yobs    <- input[[1]]
   Phi.mat <- input[[2]]
@@ -304,12 +347,11 @@ innerobj <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
 #'
 #' @return   \item{residual}{Vector of residuals and evaluation of penalty function on quadrature points for approximating the integral.}
 #'
-#' @details something
 outterobj <- function(ode.parameter, basis.initial, derivative.model, inner.input,NLS){
 
 
   if (NLS){
-    inner_coef  <- nls_optimize(innerobj, basis.initial, options=list(maxeval = 50),ode.par = ode.parameter,derive.model = derivative.model, input = inner.input)$par
+    inner_coef  <- nls_optimize.inner(innerobj, basis.initial, options=list(maxeval = 50),ode.par = ode.parameter,derive.model = derivative.model, input = inner.input)$par
   }else{
     inner_coef <- optim(par=basis.initial, fn=innerobj,ode.par = ode.parameter, derive.model = derivative.model, input = inner.input,NLS = FALSE,
                         control = list(abstol=1e-10))$par
@@ -346,8 +388,6 @@ outterobj <- function(ode.parameter, basis.initial, derivative.model, inner.inpu
 #' @return   \item{structural.par}{The structural parameters of the ODE model.}
 #'
 #' @return    \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
-#' @examples PC_ODE_1d (arg1,arg2)
-#' @details something
 #' @export
 PC_ODE_1d <- function(data, time, ode.model, par.initial, basis,lambda = NULL, controls = NULL){
 
@@ -411,9 +451,7 @@ PC_ODE_1d <- function(data, time, ode.model, par.initial, basis,lambda = NULL, c
 #' @param       options Additional optimization controls.
 #'
 #' @return   \item{par}{The solution to the non-linear least square problem, the same size as \code{x0}}
-#'
-#' @examples PC_ODE_1d (arg1,arg2)
-#' @details something
+
 nls_optimize <- function (fun, x0, options = list(), ...,verbal=1){
     stopifnot(is.numeric(x0))
     opts <- list(tau = 0.001, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
@@ -520,9 +558,7 @@ nls_optimize <- function (fun, x0, options = list(), ...,verbal=1){
 #' @param       options Additional optimization controls.
 #'
 #' @return   \item{par}{The solution to the non-linear least square problem, the same size as \code{x0}}
-#'
-#' @examples PC_ODE_1d (arg1,arg2)
-#' @details something
+
 nls_optimize.inner <- function (fun, x0, options = list(), ...,verbal=FALSE){
     stopifnot(is.numeric(x0))
     opts <- list(tau = 0.001, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
@@ -620,8 +656,8 @@ nls_optimize.inner <- function (fun, x0, options = list(), ...,verbal=FALSE){
 }
 
 #' @title       Cross-validation for sparsity parameter lambda
-#' @description Obtain the optial sparsity parameter given a search grid
-#' @usage
+#' @description Obtain the optimal sparsity parameter given a search grid based on cross validation score.
+#' @usage cv_lambda(data, time, ode.model, par.names, state.names, \cr        par.initial, basis.list,lambda,lambda_grid,cv_points,controls)
 #' @param data A data frame or matrix contrain observations from each dimension of the ODE model.
 #' @param         time The vector contain observation times or a matrix if time points are different between dimensions.
 #' @param    ode.model Defined R function that computes the time derivative of the ODE model given observations of states variable.
@@ -634,10 +670,9 @@ nls_optimize.inner <- function (fun, x0, options = list(), ...,verbal=FALSE){
 #' @param     controls A list of control parameters. See ‘Details’.
 
 #'
-#' @return
+#' @return \item{lambda_grid}{The original input vector of a search grid for the optimal lambda.}
+#' @return \item{cv.score}{The vector contains the cross validation score for each lambda}
 #'
-#' @examples
-#' @details
 cv_lambda <- function(data, time, ode.model, par.names, state.names,
                       par.initial, basis.list, lambda_grid, cv_points, controls = NULL){
 
@@ -693,6 +728,4 @@ cv_lambda <- function(data, time, ode.model, par.names, state.names,
     }
 
     return(list(cv.score = cv.score, lambda_grid = lambda_grid))
-
-
 }

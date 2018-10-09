@@ -23,6 +23,3 @@ outterobj_multi_nls(ode.parameter, basis.initial, derivative.model, inner.input,
 \description{
 An objective function of the structural parameter computes the measure of fit for the basis expansion.
 }
-\details{
-something
-}

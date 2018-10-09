@@ -9,9 +9,9 @@ PC_ODE(data, time, ode.model, par.names, state.names, \cr        par.initial, ba
 \arguments{
 \item{data}{A data frame or a matrix contain observations from each dimension of the ODE model.}
 
-\item{time}{The vector contain observation times or a matrix if time points are different between dimensions.}
+\item{time}{A vector contain observation times or a matrix if time points are different between dimensions.}
 
-\item{ode.model}{Defined R function that computes the time derivative of the ODE model given observations of states variable.}
+\item{ode.model}{An R function that computes the time derivative of the ODE model given observations of states variable and structural parameters.}
 
 \item{par.names}{The names of structural parameters defined in the 'ode.model'.}
 
@@ -31,11 +31,58 @@ PC_ODE(data, time, ode.model, par.names, state.names, \cr        par.initial, ba
 \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
 }
 \description{
-Obtain estiamtes of structural parameters of an ODE model by parameter cascade method.
+Obtain estiamtes of both structural and nuissance paarmeters of an ODE model by parameter cascade method.
 }
 \details{
-something
+The \code{controls} argument is a list providing addition inputs for the nonlinear least square optimizer:
+\itemize{
+\item \code{nquadpts} Determine the number of quadrature points for approximating an integral. Default is 101.
+\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuissance parameters.
+\item \code{tau} Initial value of Marquardt parameter. Small values indicate good initial values for structural parameters.
+\item \code{tolx} Tolerance for parameters of objective functions. Default is set at 1e-6.
+\item \code{tolg} Tolerance for the gradient of parameters of objective functions. Default is set at 1e-6.
+\item \code{maxeval} The maximum number of evaluation of the optimizer. Default is set at 20.
+}
 }
 \examples{
-PC_ODE(arg1,arg2)
+require(FDA)
+require(deSolve)
+
+#Define the FitzHugh-Nagumo model
+model.par   <- c(a=0.2,b=0.2,c=3)
+state       <- c(V=-1,R=1)
+Dmodel <- function(state,parameters){
+with(as.list(c(state,parameters)),
+  {
+     dV <- c*(V - (V^3)/3 + R)
+     dR <- -(1/c) * (V - a + b*R)
+     return(list(c(dV,dR)))
+   })}
+#Observation points
+times <- seq(0,20,length.out=11)
+#Generate ODE observations
+desolve.mod <- ode(y=state,times=times,func=ode.model,parms = model.par)
+
+nobs  <- length(times)
+scale <- 0.1
+noise <- scale*rnorm(n = nobs, mean = 0 , sd = 1)
+#Add some noises to data
+observ <- matrix(NA, nrow = length(times),ncol =3)
+observ[,1] <- times
+observ[,2] <- desolve.mod[,2] + noise
+observ[,3] <- desolve.mod[,3] + noise
+
+#Define basis for each dimension
+knots <- seq(0,20,length.out=11)
+#order of basis functions
+norder <- 4
+#number of basis funtions
+nbasis <- length(knots) + norder - 2
+#creating basis
+basis <- create.bspline.basis(c(0,20),nbasis,norder,breaks = knots)
+basis.list <- list(basis,basis)
+
+pcode.result <- PC_ODE(data = observ[,2:3], time= observ[,1], ode.model = Dmodel, par.names = c('a','b','c'),
+                      state.names = c('V','R'), par.initial = rnorm(3),lambda = 1e2,basis.list = basis.list,
+                      controls = list(smooth.lambda = 1e2,verbal = 1,maxeval = 200))
 }

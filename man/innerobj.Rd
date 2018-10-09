@@ -23,6 +23,3 @@ innerobj_multi(basis_coef, ode.par, input, derive.model,NLS)
 \description{
 An objective function combines the sum of squared error of basis expansion estimates and the penalty controls how those estimates fail to satisfies the ODE model
 }
-\details{
-something
-}
