@@ -176,7 +176,8 @@ prepare_basis <- function(basis, times, nquadpts){
 innerobj_multi  <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
 
 
-    #Get variables  from 'input'
+    #Retrieve variables  from 'input'
+    #get the dimesion of the ODE model
     ndim     <- length(input)
     npoints  <- length(unlist(input[[1]][8]))
     nbasis   <- rep(NA, ndim+1)
@@ -728,4 +729,75 @@ cv_lambda <- function(data, time, ode.model, par.names, state.names,
     }
 
     return(list(cv.score = cv.score, lambda_grid = lambda_grid))
+}
+
+#' @title Inner objective function (likelihood version)
+#' @description An objective function combines the sum of squared error of basis expansion estimates and the penalty controls how those estimates fail to satisfies the ODE model
+#' @usage
+#' @param
+#' @param
+#' @param
+#' @param
+#' @param
+#'
+#' @return
+
+innerobj_lkh <- function(basis_coef, ode.par, input, derive.model,likelihood.fun){
+    #Retrieve variables from input which is passed through the outter objective function with 'inner.input'
+    #get the dimesion of the ODE model
+    ndim     <- length(input)
+    #get the smooth parameter
+    lambda <- input[[1]][[3]]
+    #get the number of time points of observations
+    npoints  <- length(unlist(input[[1]][8]))
+    #get the names of the states
+    state.names <- input[[1]][[9]]
+    #get the names of the parameters
+    model.names <- input[[1]][[10]]
+
+
+    #Preallocate some spaces
+    #index for partition the long vector of basis coefficient
+    nbasis   <- rep(NA, ndim+1)
+    #Predictions of the states with their derivatives
+    Xt   <- matrix(NA, nrow = length(input[[1]][[7]]),ncol= ndim)
+    dXdt <- matrix(NA, nrow = length(input[[1]][[7]]),ncol= ndim)
+
+    #Turn a single vector 'basis_coef' into seperate vectors
+    #for each dimension
+    coef.list <- list()
+    nbasis[1] <- 0
+    for (jj in 1:ndim){
+       nbasis[jj+1]    <- ncol(input[[jj]][[2]])
+       coef.list[[jj]] <- basis_coef[(nbasis[jj]+1):(nbasis[jj]+nbasis[jj+1])]
+       Xt[,jj]         <- input[[jj]][[4]] %*% coef.list[[jj]]
+       dXdt[,jj]       <- input[[jj]][[5]] %*% coef.list[[jj]]
+    }
+
+    #Evaluate the likelihood function over estimation
+    eval.lik <- sum(apply(Xt,2,likelihood.fun))
+
+
+    #Start of calculation for the ODE penalty
+
+    names(ode.par) <- model.names
+
+    temp_fun  <- function(x, temp = ode.par,names = state.names){
+        names(x) <- state.names
+        return(unlist(derive.model(state = x, parameters = temp)))
+    }
+    temp_eval <- t(apply(Xt,1,temp_fun))
+
+    temp_list <- list(dXdt, temp_eval)
+    temp_penalty_resid <- Reduce("-", temp_list)
+
+    lambda <- input[[1]][[3]]
+    penalty_residual <- matrix(NA, nrow = nrow(temp_eval),ncol=ncol(temp_eval))
+    for (jj in 1:ndim){
+      penalty_residual[,jj] <- sqrt(lambda) * sqrt(input[[jj]][[7]]) * temp_penalty_resid[,jj]
+    }
+
+    obj.eval <- -eval.lik + sum(as.vector(penalty_residual)^2)
+
+    return(obj.eval)
 }
