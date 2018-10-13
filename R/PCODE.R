@@ -801,3 +801,92 @@ innerobj_lkh <- function(basis_coef, ode.par, input, derive.model,likelihood.fun
 
     return(obj.eval)
 }
+
+#' @title Outter objective function (likelihood dimension version)
+#' @description An objective function of the structural parameter computes the measure of fit.
+#' @usage
+#' @param
+#' @param
+#' @param
+#' @param
+#' @param
+#'
+#' @return
+#'
+outterobj_lkh <- function(ode.parameter, basis.initial , derivative.model, likelihood.fun, inner.input){
+
+       #Profiled estimation on the nuissance parameters
+       inner_coef <- optim(basis.initial, innerobj_lkh, ode.par = ode.parameter, derive.model = derivative.model, likelihood.fun = likelihood.fun, control = list(maxit = 50))
+
+       #Get estimation of states to calculate outter objective function
+       ndim     <- length(inner.input)
+       npoints  <- length(inner.input[[1]][[8]])
+       basisnumber   <- rep(NA, ndim+1)
+       Xhat     <- matrix(NA, nrow = npoints, ncol = ndim)
+
+       #Turn a single vector 'inner_coef' into seperate locations
+       coef.list <- list()
+       basisnumber[1] <- 0
+       for (jj in 1:ndim){
+         basisnumber[jj+1]    <- ncol(inner.input[[jj]][[2]])
+          coef.list[[jj]] <- inner_coef[(basisnumber[jj]+1):(basisnumber[jj]+basisnumber[jj+1])]
+          #Basis expansion for j-th dimension
+          Xhat[,jj]       <- inner.input[[jj]][[2]] %*% coef.list[[jj]]
+       }
+       #Evaluate the likelihood function over estimation
+       eval.lik <- sum(apply(Xhat,2,likelihood.fun))
+
+       return(eval.lik)
+}
+
+
+#' @title PCODE (likelihood dimension version)
+#' @description
+#' @usage
+#' @param
+#' @param
+#' @param
+#' @param
+#' @param
+#'
+#'
+
+
+PCODE_lkh <- function(data, likelihood.fun, time, ode.model,par.names,state.names,  par.initial, basis.list, lambda = NULL,controls = NULL){
+  #Set up default controls for optimizations and quadrature evaluation
+  con.default <- list(nquadpts = 101, smooth.lambda = 1e2, tau = 0.01, tolx = 1e-6,tolg = 1e-6, maxeval = 20)
+  #Replace default with user's input
+  con.default[(namc <- names(controls))] <- controls
+  con.now  <- con.default
+
+  #Evaluate basis functiosn for each state variable
+  basis.eval.list <- lapply(basis.list, prepare_basis, times = time, nquadpts = con.now$nquadpts)
+
+  #Number of dimensions of the ODE model
+  ndim <- ncol(data)
+
+  #Some initializations
+  inner.input  <- list()
+  initial_coef <- list()
+
+  for (ii in 1:ndim){
+    #For each dimension, obtain initial value for the nuissance parameters or the basis coefficients
+    Rmat = t(basis.eval.list[[ii]]$Q.D2mat)%*%(basis.eval.list[[ii]]$Q.D2mat*(basis.eval.list[[ii]]$quadwts%*%t(rep(1,basis.list[[ii]]$nbasis))))
+    basismat2 = t(basis.eval.list[[ii]]$Phi.mat)%*%basis.eval.list[[ii]]$Phi.mat;
+    Bmat    = basismat2 + con.now$smooth.lambda*Rmat;
+    #Initial basis coefficients
+    initial_coef[[ii]] = ginv(Bmat)%*%t(basis.eval.list[[ii]]$Phi.mat)%*%data[,ii]
+    inner.input[[ii]]  = list(data[,ii], basis.eval.list[[ii]]$Phi.mat, lambda,
+                              basis.eval.list[[ii]]$Qmat, basis.eval.list[[ii]]$Q.D1mat,
+                              basis.eval.list[[ii]]$quadts, basis.eval.list[[ii]]$quadwts,time,
+                              state.names,par.names)
+  }
+
+
+  par.final <- optim(par.initial, outterobj_lkh,basis.initial = unlist(initial_coef), derivative.model = ode.model, input = inner.input, likelihood.fun = likelihood.fun, control=list(maxit = con.now$maxeval))$par
+
+  basis.coef.final <- optim(unlist(initial_coef),innerobj_lkh, ode.par = par.final, input = inner.input, derive.model = ode.model, likelihood.fun = likelihood.fun)
+
+    return(list(structural.par = par.final, nuissance.par = basis.coef.final))
+
+}
