@@ -840,7 +840,7 @@ outterobj_lkh <- function(ode.parameter, basis.initial , derivative.model, likel
 }
 
 
-#' @title PCODE (likelihood dimension version)
+#' @title PC_ODE_lkh (likelihood and multiple dimension version)
 #' @description
 #' @usage
 #' @param
@@ -852,7 +852,7 @@ outterobj_lkh <- function(ode.parameter, basis.initial , derivative.model, likel
 #'
 
 
-PCODE_lkh <- function(data, likelihood.fun, time, ode.model,par.names,state.names,  par.initial, basis.list, lambda = NULL,controls = NULL){
+PC_ODE_lkh <- function(data, likelihood.fun, time, ode.model,par.names,state.names,  par.initial, basis.list, lambda = NULL,controls = NULL){
   #Set up default controls for optimizations and quadrature evaluation
   con.default <- list(nquadpts = 101, smooth.lambda = 1e2, tau = 0.01, tolx = 1e-6,tolg = 1e-6, maxeval = 20)
   #Replace default with user's input
@@ -860,6 +860,7 @@ PCODE_lkh <- function(data, likelihood.fun, time, ode.model,par.names,state.name
   con.now  <- con.default
 
   #Evaluate basis functiosn for each state variable
+
   basis.eval.list <- lapply(basis.list, prepare_basis, times = time, nquadpts = con.now$nquadpts)
 
   #Number of dimensions of the ODE model
@@ -889,4 +890,144 @@ PCODE_lkh <- function(data, likelihood.fun, time, ode.model,par.names,state.name
 
     return(list(structural.par = par.final, nuissance.par = basis.coef.final))
 
+}
+
+
+
+#' @title Parameter Cascade Method for Ordinary Differential Equation Models (likelihood and Single dimension version)
+#' @description
+#' @usage
+#' @param
+#' @param
+#' @param
+#' @param
+#' @param
+#' @param
+#' @param
+#'
+#' @return
+#'
+#' @return
+#' @export
+PC_ODE_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial, basis,lambda = NULL, controls = NULL){
+
+  #number of parameters
+  npar  <- length(par.initial)
+
+
+  #Evaluating basis functions at time points of observations
+  #and stored as columns in Phi matrix
+  Phi.mat <- eval.basis(time, basis)
+  #Evaluating 1st derivative of basis functions
+  D1.mat <- eval.basis(time, basis,1)
+  #Evaluating 2nd derivative of basis functions
+  D2.mat <- eval.basis(time, basis,2)
+
+  #Calculate L2 penalty
+  quadts   <- seq(min(time),max(time),length.out=controls$nquadpts)
+  nquad    <- length(quadts)
+  quadwts  <- rep(1,nquad)
+  even.ind <- seq(2,(nquad-1),by=2)
+  odd.ind  <- seq(3,(nquad-2),by=2)
+  quadwts[even.ind] = 4
+  quadwts[odd.ind] = 2
+  h  <- quadts[2] - quadts[1]
+  quadwts <- quadwts*(h/3)
+
+  Qmat    <- eval.basis(quadts, basis)
+  Q.D1mat <- eval.basis(quadts, basis, 1)
+  Q.D2mat <- eval.basis(quadts, basis, 2)
+
+  #Initial estimat of basis coefficients
+  Rmat = t(Q.D2mat)%*%(Q.D2mat*(quadwts%*%t(rep(1,nbasis))))
+  basismat2 = t(Phi.mat)%*%Phi.mat;
+  Bmat    = basismat2 + controls$smooth.lambda*Rmat;
+  #Initial basis coefficients
+  initial_coef = ginv(Bmat)%*%t(Phi.mat)%*%data
+
+  #Passing to inner objective functions and obtain initial value for parameter cascading
+  inner.input = list(data, Phi.mat, lambda, Qmat, Q.D1mat,quadts,quadwts,time,
+                     state.names,par.names)
+
+  theta.final <- optim(par.initial, outterobj_lkh_1d,basis.initial = initial_coef, derivative.model = ode.model,
+                       inner.input = inner.input, likelihood.fun = likelihood.fun)
+
+
+  return(list(structural.par = theta.final, nuissance.par = basiscoef))
+}
+
+
+#' @title Outter objective function (likelihood and Single dimension version)
+#' @description An objective function of the structural parameter computes the measure of fit.
+#' @usage
+#' @param
+#' @param
+#' @param
+#' @param
+#' @param
+#'
+#' @return
+#'
+outterobj_lkh_1d <- function(ode.parameter, basis.initial , derivative.model, likelihood.fun, inner.input){
+
+  #Profiled estimation on the nuissance parameters
+  inner_coef <- optim(basis.initial, innerobj_lkh_1d, ode.par = ode.parameter,
+                     derive.model = derivative.model, likelihood.fun = likelihood.fun,
+                      input = inner.input, control = list(maxit = 50))
+
+  yobs    <- inner.input[[1]]
+  Phi.mat <- inner.input[[2]]
+  xhat     <- Phi.mat %*% basis_coef
+  residual <- yobs - xhat
+  lik.eval <- sum(unlist(lapply(xhat, likelihood.fun)))
+
+  return(lik.eval)
+}
+
+#' @title Inner objective function (Likelihood and Single dimension version )
+#' @description
+#' @usage
+#' @param
+#' @param
+#' @param
+#' @param
+#' @param
+#'
+#' @return
+#'
+innerobj_lkh_1d <- function(basis_coef, ode.par, input, derive.model,likelihood.fun){
+  yobs    <- input[[1]]
+  Phi.mat <- input[[2]]
+  lambda  <- input[[3]]
+  Qmat    <- input[[4]]
+  Q.D1mat <- input[[5]]
+  quadts  <- input[[6]]
+  quadwts <- input[[7]]
+  state.names <- input[[1]][[9]]
+  model.names <- input[[1]][[10]]
+  #Part 1.
+  xhat     <- Phi.mat %*% basis_coef
+  residual <- yobs - xhat
+  lik.eval <- sum(unlist(lapply(xhat, likelihood.fun)))
+  #Part 2.
+  penalty_residual <- rep(NA, length(quadwts))
+  #Use composite Simpson's rule to calculate the integral of residual
+  Xt   <- Qmat    %*%  basis_coef
+  dXdt <- Q.D1mat %*%  basis_coef
+
+  #Evaluate f(X)
+  rightside <- rep(NA, length(quadwts))
+  names(ode.par) <- model.names
+
+
+  tempfun <- function(x, temp = ode.par,names = state.names){
+    names(x) <- state.names
+    return(derive.model(state = x, parameters= temp))
+  }
+  rightside <- unlist(lapply(Xt,tempfun))
+
+  penalty_residual <- sqrt(lambda) * sqrt(quadwts) * (dXdt - rightside)
+  #ode_penalty <- sum(lambda * quadwts * (penalty_residual)^2)
+  obj.eval <- sum(penalty_residual^2)-lik.eval
+  return(obj.eval)
 }
