@@ -909,7 +909,12 @@ PC_ODE_lkh <- function(data, likelihood.fun, time, ode.model,par.names,state.nam
 #'
 #' @return
 #' @export
-PC_ODE_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial, basis,lambda = NULL, controls = NULL){
+PC_ODE_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial,range, basis.list,par.names,state.names ,lambda = NULL, controls = NULL){
+  #Set up default controls for optimizations and quadrature evaluation
+  con.default <- list(nquadpts = 101, smooth.lambda = 1e2, tau = 0.01, tolx = 1e-6,tolg = 1e-6, maxeval = 20)
+  #Replace default with user's input
+  con.default[(namc <- names(controls))] <- controls
+  con.now  <- con.default
 
   #number of parameters
   npar  <- length(par.initial)
@@ -924,7 +929,7 @@ PC_ODE_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial, ba
   D2.mat <- eval.basis(time, basis,2)
 
   #Calculate L2 penalty
-  quadts   <- seq(min(time),max(time),length.out=controls$nquadpts)
+  quadts   <- seq(min(time),max(time),length.out=con.now$nquadpts)
   nquad    <- length(quadts)
   quadwts  <- rep(1,nquad)
   even.ind <- seq(2,(nquad-1),by=2)
@@ -941,7 +946,7 @@ PC_ODE_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial, ba
   #Initial estimat of basis coefficients
   Rmat = t(Q.D2mat)%*%(Q.D2mat*(quadwts%*%t(rep(1,nbasis))))
   basismat2 = t(Phi.mat)%*%Phi.mat;
-  Bmat    = basismat2 + controls$smooth.lambda*Rmat;
+  Bmat    = basismat2 + con.now$smooth.lambda*Rmat;
   #Initial basis coefficients
   initial_coef = ginv(Bmat)%*%t(Phi.mat)%*%data
 
@@ -950,7 +955,9 @@ PC_ODE_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial, ba
                      state.names,par.names)
 
   theta.final <- optim(par.initial, outterobj_lkh_1d,basis.initial = initial_coef, derivative.model = ode.model,
-                       inner.input = inner.input, likelihood.fun = likelihood.fun)
+                       inner.input = inner.input, likelihood.fun = likelihood.fun,method='Brent',lower = range[1],upper = range[2])$par
+
+  basiscoef <- optim(initial_coef, innerobj_lkh_1d, ode.par = theta.final, input =inner.input, derive.model = ode.model, likelihood.fun = likelihood.fun)$par
 
 
   return(list(structural.par = theta.final, nuissance.par = basiscoef))
@@ -971,17 +978,17 @@ PC_ODE_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial, ba
 outterobj_lkh_1d <- function(ode.parameter, basis.initial , derivative.model, likelihood.fun, inner.input){
 
   #Profiled estimation on the nuissance parameters
-  inner_coef <- optim(basis.initial, innerobj_lkh_1d, ode.par = ode.parameter,
+  basis_coef <- optim(basis.initial, innerobj_lkh_1d, ode.par = ode.parameter,
                      derive.model = derivative.model, likelihood.fun = likelihood.fun,
-                      input = inner.input, control = list(maxit = 50))
+                      input = inner.input)$par
 
   yobs    <- inner.input[[1]]
   Phi.mat <- inner.input[[2]]
   xhat     <- Phi.mat %*% basis_coef
   residual <- yobs - xhat
-  lik.eval <- sum(unlist(lapply(xhat, likelihood.fun)))
+  lik.eval <-likelihood.fun(residual)
 
-  return(lik.eval)
+  return(-lik.eval)
 }
 
 #' @title Inner objective function (Likelihood and Single dimension version )
@@ -1003,12 +1010,12 @@ innerobj_lkh_1d <- function(basis_coef, ode.par, input, derive.model,likelihood.
   Q.D1mat <- input[[5]]
   quadts  <- input[[6]]
   quadwts <- input[[7]]
-  state.names <- input[[1]][[9]]
-  model.names <- input[[1]][[10]]
+  state.names <- input[[9]]
+  model.names <- input[[10]]
   #Part 1.
   xhat     <- Phi.mat %*% basis_coef
   residual <- yobs - xhat
-  lik.eval <- sum(unlist(lapply(xhat, likelihood.fun)))
+  lik.eval <- likelihood.fun(residual)
   #Part 2.
   penalty_residual <- rep(NA, length(quadwts))
   #Use composite Simpson's rule to calculate the integral of residual
