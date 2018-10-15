@@ -685,7 +685,7 @@ cv_lambda <- function(data, time, ode.model, par.names, state.names,
     data.fit  <- data[-time.keep,]
 
 
-    cv.score     <- rep(NA, cv_points)
+    cv.score     <- rep(NA, length(lambda_grid))
 
     pcode.result <- list()
     for (jj in 1:length(lambda_grid)){
@@ -714,14 +714,14 @@ cv_lambda <- function(data, time, ode.model, par.names, state.names,
               index[kk+1] <- basis.list[[kk]]$nbasis
               basis.coef <- nui.res[(index[kk]+1):(index[kk]+index[kk+1])]
 
-              pred.mat[,kk]        <- basis.coef %*% phi.temp
-              pred.derive.mat[,kk] <- basis.coef %*% der.temp
+              pred.mat[,kk]        <-  phi.temp %*% basis.coef
+              pred.derive.mat[,kk] <-  der.temp %*% basis.coef
           }
 
           #Evaluate the ode model given state and parameter
           ode.eval <- matrix(NA, nrow = nrow(pred.derive.mat), ncol = ncol(pred.derive.mat))
           for (jk in 1:cv_points){
-            ode.eval[jk,] <- unlist(ode.model(state = pred.mat[jk,],parameters = par.rer))
+            ode.eval[jk,] <- unlist(ode.model(state = pred.mat[jk,],parameters = par.res))
           }
           temp <- apply((pred.derive.mat - ode.eval),2, function(x) {mean(x^2)})
           cv.score[jj] <- sum(temp^2)
