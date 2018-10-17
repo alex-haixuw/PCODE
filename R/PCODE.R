@@ -438,7 +438,7 @@ PC_ODE_1d <- function(data, time, ode.model, par.initial, basis,lambda = NULL, c
 
       theta.final  <- nls_optimize(outterobj, par.initial,basis.initial = initial_coef, derivative.model = ode.model,inner.input = inner.input,NLS=TRUE,verbal = 1)$par
 
-      basiscoef <- nls_optimize(innerobj, initial_coef, ode.par = theta.final, derive.model = ode.model, input = inner.input,NLS = TRUE,verbal=1)$par
+      basiscoef <- nls_optimize.inner(innerobj, initial_coef, ode.par = theta.final, derive.model = ode.model, input = inner.input,NLS = TRUE)$par
 
     return(list(structural.par = theta.final, nuissance.par = basiscoef))
 }
@@ -587,20 +587,10 @@ nls_optimize.inner <- function (fun, x0, options = list(), ...,verbal=FALSE){
     nh <- 0
     errno <- 0
     k <- 1
-    if (verbal == 1){
-      print('#######################################')
-      print('Starting optimization')
-      print('#######################################')
-    }
+
 
     while (k < maxeval) {
 
-        if (k == 1){
-           if (verbal == 1){
-            print(paste('Current iteration: ',k,collapse = ''))
-            print(paste('Current function value: ', round(2*f,digits = 6), collapse=''))
-        }
-        }
 
         k <- k + 1
         R <- chol(A + mu * eye(n))
@@ -616,10 +606,6 @@ nls_optimize.inner <- function (fun, x0, options = list(), ...,verbal=FALSE){
         dL <- sum(h * (mu * h - g))/2
         rn <- fun(xnew)
         fn <- 0.5 * sum(rn^2)
-        if (verbal == 1){
-            print(paste('Current iteration: ',k,collapse = ''))
-            print(paste('Current function value: ', round(2*fn,digits = 6), collapse=''))
-        }
 
         Jn <- jacobian(fun, xnew)
         if (length(rn) != length(r)) {
@@ -667,7 +653,7 @@ nls_optimize.inner <- function (fun, x0, options = list(), ...,verbal=FALSE){
 #' @param  par.initial Initial value of structural parameters to be optimized.
 #' @param   basis.list A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.
 #' @param lambda_grid A search grid for finding the optimial sparsity parameter lambda.
-#' @param cv_points A number indicating how many data points (>= 5) will be saved for doing cross validation. Default is set at 5 as minimum.
+#' @param cv_portion A number indicating the proportion of data will be saved for doing cross validation. Default is set at 5 as minimum.
 #' @param kfolds A number indicating the number of folds the data should be seprated into.
 #' @param     controls A list of control parameters. See ‘Details’.
 
@@ -676,69 +662,86 @@ nls_optimize.inner <- function (fun, x0, options = list(), ...,verbal=FALSE){
 #' @return \item{cv.score}{The vector contains the cross validation score for each lambda}
 #'
 cv_lambda <- function(data, time, ode.model, par.names, state.names,
-                      par.initial, basis.list, lambda_grid, cv_portion,kfolds, controls = NULL){
-
+                      par.initial, basis.list, lambda_grid, cv_portion,kfolds, rep,controls = NULL){
 
     #Determine the folding of the original data
-    break.points   <- seq(min(time),max(time),length.out = kfolds + 1)
+    boundary.points   <- seq(min(time),max(time),length.out = kfolds + 1)
     #Determine the number of points to keep in each fold
-    points.prop    <- ceiling(cv_portion / kfolds)
-    #
-    for (jj in 1:kfolds){
-
-    }
+    numcvpoints    <- ceiling(length(time) * cv_portion / kfolds)
 
 
-    #Keep some observations for cross validation:
-    #Identifying time points
-    time.keep <- time[ceiling(seq(1,length(time),length.out=(cv_points+2))[-c(1,(cv_points+2))])]
-    #Seperate data into two parts
-    data.keep <- data[time.keep,]
-    data.fit  <- data[-time.keep,]
+    cv.score     <- matrix(NA, nrow = length(lambda_grid), ncol = rep)
 
-
-    cv.score     <- rep(NA, length(lambda_grid))
-
-    pcode.result <- list()
     for (jj in 1:length(lambda_grid)){
-          pcode.result[[jj]] <- PC_ODE(data = data.fit, time = time[-time.keep], ode.model = ode.model,
-                                      par.names = par.names, state.names = state.names, basis.list = basis.list,
-                                      par.initial = par.initial, lambda = lambda_grid[jj],
-                                      controls = controls)
 
-         par.res <- pcode.result[[jj]]$structural.par
-         names(par.res) <- par.names
-         nui.res <- pcode.result[[jj]]$nuissance.par
+      for (kk in 1:rep){
+        #Deter
+        points.keep <- matrix(NA, nrow = kfolds, ncol = numcvpoints)
+        for (jkjk in 1:kfolds){
+          points.keep[jkjk,] <- sample(time[time> boundary.points[jkjk]&time<boundary.points[jkjk+1]],
+                                     numcvpoints)
+        }
 
-          pred.mat           <- matrix(NA, nrow = cv_points,ncol = length(state.names))
-          colnames(pred.mat) <- state.names
+        #Keep some observations for cross validation:
+        #Identifying time points
+        time.keep <- points.keep
+        #Seperate data into two parts
+        if(length(state.names == 1)){
+          data.keep <- data[time.keep]
+          data.fit  <- data[-time.keep]
+        }else{
+          data.keep <- data[time.keep,]
+          data.fit  <- data[-time.keep,]
+        }
 
-          pred.derive.mat    <- matrix(NA, nrow = cv_points,ncol = length(state.names))
-
-          index    <- rep(NA, length(par.names)+1)
+          print(paste('Running on lambda = ',lambda_grid[jj],' for iteration ',kk,sep=''))
+          pcode.result <- PC_ODE(data = data.fit, time = time[-time.keep],
+                                 ode.model = ode.model, par.names = par.names,
+                                 state.names = state.names, basis.list = basis.list,
+                                 par.initial = par.initial, lambda = lambda_grid[jj],
+                                 controls = controls)
+          #
+          par.res        <- pcode.result$structural.par
+          names(par.res) <- par.names
+          nui.res        <- pcode.result$nuissance.par
+          index    <- rep(NA, length(state.names)+1)
           index[1] <- 0
-
-          for (kk in 1:length(state.names)){
+          #Evaluate
+          initial.val <- rep(NA, length(state.names))
+          names(initial.val) <- state.names
+          for (jk in 1:length(state.names)){
               #evaluation of basis object
-              phi.temp <- eval.basis(time.keep, basis.list[[kk]])
-              #evaluation of first derivative of basis object
-              der.temp <- eval.basis(time.keep, basis.list[[kk]],1)
-              index[kk+1] <- basis.list[[kk]]$nbasis
-              basis.coef <- nui.res[(index[kk]+1):(index[kk]+index[kk+1])]
+              if(length(state.names) == 1){
+                phi.temp <- eval.basis(time[1], basis.list)
+                index[jk+1] <- basis.list$nbasis
+                basis.coef <- nui.res[(index[jk]+1):(index[jk]+index[jk+1])]
+                initial.val[jk] <- phi.temp%*%basis.coef
+              }else{
+                phi.temp <- eval.basis(time[1], basis.list[[jk]])
+                index[jk+1] <- basis.list[[jk]]$nbasis
+                basis.coef <- nui.res[(index[jk]+1):(index[jk]+index[jk+1])]
+                initial.val[jk] <-  phi.temp%*% basis.coef
+              }
 
-              pred.mat[,kk]        <-  phi.temp %*% basis.coef
-              pred.derive.mat[,kk] <-  der.temp %*% basis.coef
           }
 
-          #Evaluate the ode model given state and parameter
-          ode.eval <- matrix(NA, nrow = nrow(pred.derive.mat), ncol = ncol(pred.derive.mat))
-          for (jk in 1:cv_points){
-            ode.eval[jk,] <- unlist(ode.model(state = pred.mat[jk,],parameters = par.res))
+          #simulate a dynamic system based on initial value and structural parameters
+          sim.res   <- ode(y = initial.val, times = sort(time.keep), func = ode.model,parms = par.res)
+          residuals <- sim.res[,state.names] -  data.keep
+          if(length(state.names)==1){
+            cv.score[jj,kk] <- mean(residuals^2)
+          }else{
+            cv.score[jj,kk] <- sum(apply(residuals, 2, function(x){mean(x^2)}))
           }
-          temp <- apply((pred.derive.mat - ode.eval),2, function(x) {mean(x^2)})
-          cv.score[jj] <- sum(temp^2)
 
+      }
     }
+
+    lambda_vec <- rep(lambda_grid,each = rep)
+    score_vec  <- as.vector(t(cv.score))
+    cv.data    <- as.data.frame(cbind(lambda_vec,score_vec))
+    colnames(cv.data) <- c('lambda','cvscore')
+    cv.plot <- ggplot(data = cv.data,aes(x = log10(lambda))) + theme_bw()
 
     return(list(cv.score = cv.score, lambda_grid = lambda_grid))
 }
