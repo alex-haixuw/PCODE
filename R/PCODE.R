@@ -668,6 +668,7 @@ nls_optimize.inner <- function (fun, x0, options = list(), ...,verbal=FALSE){
 #' @param   basis.list A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.
 #' @param lambda_grid A search grid for finding the optimial sparsity parameter lambda.
 #' @param cv_points A number indicating how many data points (>= 5) will be saved for doing cross validation. Default is set at 5 as minimum.
+#' @param kfolds A number indicating the number of folds the data should be seprated into.
 #' @param     controls A list of control parameters. See ‘Details’.
 
 #'
@@ -675,7 +676,18 @@ nls_optimize.inner <- function (fun, x0, options = list(), ...,verbal=FALSE){
 #' @return \item{cv.score}{The vector contains the cross validation score for each lambda}
 #'
 cv_lambda <- function(data, time, ode.model, par.names, state.names,
-                      par.initial, basis.list, lambda_grid, cv_points, controls = NULL){
+                      par.initial, basis.list, lambda_grid, cv_portion,kfolds, controls = NULL){
+
+
+    #Determine the folding of the original data
+    break.points   <- seq(min(time),max(time),length.out = kfolds + 1)
+    #Determine the number of points to keep in each fold
+    points.prop    <- ceiling(cv_portion / kfolds)
+    #
+    for (jj in 1:kfolds){
+
+    }
+
 
     #Keep some observations for cross validation:
     #Identifying time points
