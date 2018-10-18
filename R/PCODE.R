@@ -737,13 +737,19 @@ cv_lambda <- function(data, time, ode.model, par.names, state.names,
       }
     }
 
-    lambda_vec <- rep(lambda_grid,each = rep)
-    score_vec  <- as.vector(t(cv.score))
-    cv.data    <- as.data.frame(cbind(lambda_vec,score_vec))
-    colnames(cv.data) <- c('lambda','cvscore')
-    cv.plot <- ggplot(data = cv.data,aes(x = log10(lambda))) + theme_bw()
+    mean_cv <- apply(cv.score, 1, mean)
 
-    return(list(cv.score = cv.score, lambda_grid = lambda_grid))
+    cv.data    <- as.data.frame(cbind(lambda_grid,mean_cv))
+    colnames(cv.data) <- c('lambda','cvscore')
+    cv.plot <- ggplot(data = cv.data,aes(x = log10(lambda),y = cvscore)) + theme_classic() +
+               scale_x_continuous(limits = c(0,log10(max(lambda_grid))+1)) +
+               scale_y_continuous(limits = c(0,3 * max(cv.score)))
+    for (index in 1:length(lambda_grid)){
+      cv.plot <- cv.plot  + geom_point() + geom_line() +
+                            geom_errorbar(aes(ymin = min(cv.score[index,]), ymax= max(cv.score[index,])), width=0.05)
+    }
+    cv.plot
+    return(list(cv.score = cv.score, lambda_grid = lambda_grid,cv.plot = cv.plot))
 }
 
 #' @title Inner objective function (likelihood version)
