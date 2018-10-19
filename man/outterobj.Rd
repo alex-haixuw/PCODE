@@ -21,5 +21,5 @@ outterobj_multi_nls(ode.parameter, basis.initial, derivative.model, inner.input,
 \item{residual}{Vector of residuals and evaluation of penalty function on quadrature points for approximating the integral.}
 }
 \description{
-An objective function of the structural parameter computes the measure of fit for the basis expansion.
+An objective function of the structural parameter computes the measure of fit.
 }

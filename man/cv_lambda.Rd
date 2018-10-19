@@ -23,7 +23,9 @@ cv_lambda(data, time, ode.model, par.names, state.names, \cr        par.initial,
 
 \item{lambda_grid}{A search grid for finding the optimial sparsity parameter lambda.}
 
-\item{cv_points}{A number indicating how many data points (>= 5) will be saved for doing cross validation. Default is set at 5 as minimum.}
+\item{cv_portion}{A number indicating the proportion of data will be saved for doing cross validation. Default is set at 5 as minimum.}
+
+\item{kfolds}{A number indicating the number of folds the data should be seprated into.}
 
 \item{controls}{A list of control parameters. See ‘Details’.}
 }

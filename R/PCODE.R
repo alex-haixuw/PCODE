@@ -1,5 +1,5 @@
 #' @title Parameter Cascade Method for Ordinary Differential Equation Models
-#' @description Obtain estiamtes of both structural and nuissance paarmeters of an ODE model by parameter cascade method.
+#' @description Obtain estiamtes of both structural and nuissance parameters of an ODE model by parameter cascade method.
 #' @usage PC_ODE(data, time, ode.model, par.names, state.names, \cr        par.initial, basis.list,lambda,controls)
 #' @param        data A data frame or a matrix contain observations from each dimension of the ODE model.
 #' @param         time A vector contain observation times or a matrix if time points are different between dimensions.
@@ -338,7 +338,7 @@ innerobj <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
 
 
 #' @title Outter objective function
-#' @description An objective function of the structural parameter computes the measure of fit for the basis expansion.
+#' @description An objective function of the structural parameter computes the measure of fit.
 #' @usage outterobj_multi_nls(ode.parameter, basis.initial, derivative.model, inner.input, NLS)
 #' @param ode.parameter Structural parameters of the ODE model.
 #' @param basis.initial Initial values of the basis coefficients for nonlinear least square optimization.
@@ -387,9 +387,7 @@ outterobj <- function(ode.parameter, basis.initial, derivative.model, inner.inpu
 #' @param     controls A list of control parameters. See ‘Details’.
 #'
 #' @return   \item{structural.par}{The structural parameters of the ODE model.}
-#'
 #' @return    \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
-#' @export
 PC_ODE_1d <- function(data, time, ode.model, par.initial, basis,lambda = NULL, controls = NULL){
 
     #number of parameters
@@ -752,16 +750,16 @@ cv_lambda <- function(data, time, ode.model, par.names, state.names,
     return(list(cv.score = cv.score, lambda_grid = lambda_grid,cv.plot = cv.plot))
 }
 
-#' @title Inner objective function (likelihood version)
-#' @description An objective function combines the sum of squared error of basis expansion estimates and the penalty controls how those estimates fail to satisfies the ODE model
-#' @usage
-#' @param
-#' @param
-#' @param
-#' @param
-#' @param
+#' @title Inner objective function (likelihood and multiple dimension version)
+#' @description An objective function combines the likelihood or loglikelihood of errors from each dimension of state variables and the penalty controls how the state estimates fail to satisfy the ODE model.
+#' @usage innerobj_lkh_1d(basis_coef, ode.par, input, derive.model, likelihood.fun)
+#' @param basis_coef Basis coefficients for interpolating observations given a basis boject.
+#' @param ode.par Structural parameters of the ODD model.
+#' @param input Contains dependencies for the optimization, including observations, ode penalty, and etc..
+#' @param derivde.model The function defines the ODE model and is the same as the ode.model in 'PC_ODE'.
+#' @param likelihood.fun The likelihood or loglikelihood function of the errors.
 #'
-#' @return
+#' @return obj.eval The evaluation of the inner objective function.
 
 innerobj_lkh <- function(basis_coef, ode.par, input, derive.model,likelihood.fun){
     #Retrieve variables from input which is passed through the outter objective function with 'inner.input'
@@ -823,17 +821,16 @@ innerobj_lkh <- function(basis_coef, ode.par, input, derive.model,likelihood.fun
     return(obj.eval)
 }
 
-#' @title Outter objective function (likelihood dimension version)
+#' @title Outter objective function (likelihood and multiple dimension version)
 #' @description An objective function of the structural parameter computes the measure of fit.
-#' @usage
-#' @param
-#' @param
-#' @param
-#' @param
-#' @param
+#' @usage outterobj_lkh(ode.parameter, basis.initial, derivative.model, likelihood.fun, inner.input)
+#' @param ode.parameter Structural parameters of the ODE model.
+#' @param basis.initial Initial values of the basis coefficients for nonlinear least square optimization.
+#' @param derivative.model The function defines the ODE model and is the same as the ode.model in 'PC_ODE'
+#' @param likelihood.fun The likelihood or loglikelihood function of the errors.
+#' @param inner.input Input that will be passed to the inner objective function. Contains dependencies for the optimization, including observations, penalty parameter lambda, and etc..
 #'
-#' @return
-#'
+#' @return neglik The negative of the likelihood or the loglikelihood function that will be passed further to the 'optim' function.
 outterobj_lkh <- function(ode.parameter, basis.initial , derivative.model, likelihood.fun, inner.input){
 
        #Profiled estimation on the nuissance parameters
@@ -862,15 +859,33 @@ outterobj_lkh <- function(ode.parameter, basis.initial , derivative.model, likel
 
 
 #' @title PC_ODE_lkh (likelihood and multiple dimension version)
-#' @description
-#' @usage
-#' @param
-#' @param
-#' @param
-#' @param
-#' @param
+#' @description Obtain estimates of both structural and nuissance parameters of an ODE model by parameter cascade method.
+#' @usage PC_ODE_lkh(data, likelihood.fun, time, ode.model, par.names, state.names, par.initial, basis.list, lambda, controls=list())
+#' @param data A data frame or a matrix contain observations from each dimension of the ODE model.
+#' @param likelihood.fun A function computes the likelihood or the loglikelihood of the errors.
+#' @param time A vector contains observation ties or a matrix if time points are different between dimesion.
+#' @param    ode.model An R function that computes the time derivative of the ODE model given observations of states variable and structural parameters.
+#' @param    par.names The names of structural parameters defined in the 'ode.model'.
+#' @param  state.names The names of state variables defined in the 'ode.model'.
+#' @param  par.initial Initial value of structural parameters to be optimized.
+#' @param   basis.list A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.
+#' @param    lambda Penalty parameter.
+#' @param     controls A list of control parameters. See ‘Details’.
 #'
+#' @details The \code{controls} argument is a list providing addition inputs for the nonlinear least square optimizer:
+#' \itemize{
+#'\item \code{nquadpts} Determine the number of quadrature points for approximating an integral. Default is 101.
+#'\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuissance parameters.
+#'\item \code{tau} Initial value of Marquardt parameter. Small values indicate good initial values for structural parameters.
+#'\item \code{tolx} Tolerance for parameters of objective functions. Default is set at 1e-6.
+#'\item \code{tolg} Tolerance for the gradient of parameters of objective functions. Default is set at 1e-6.
+#'\item \code{maxeval} The maximum number of evaluation of the optimizer. Default is set at 20.
+#'}
 #'
+#' @return   \item{structural.par}{The structural parameters of the ODE model.}
+#'
+#' @return    \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
+
 
 
 PC_ODE_lkh <- function(data, likelihood.fun, time, ode.model,par.names,state.names,  par.initial, basis.list, lambda = NULL,controls = NULL){
@@ -916,20 +931,32 @@ PC_ODE_lkh <- function(data, likelihood.fun, time, ode.model,par.names,state.nam
 
 
 #' @title Parameter Cascade Method for Ordinary Differential Equation Models (likelihood and Single dimension version)
-#' @description
-#' @usage
-#' @param
-#' @param
-#' @param
-#' @param
-#' @param
-#' @param
-#' @param
+#' @description Obtain estimates of both structural and nuissance parameters of an ODE model by parameter cascade method.
+#' @usage PC_ODE_lkh_1d(data, likelihood.fun, time, ode.model, par.names, state.names, par.initial, basis.list, lambda, controls=list())
+#' @param data A data frame or a matrix contain observations from each dimension of the ODE model.
+#' @param likelihood.fun A function computes the likelihood or the loglikelihood of the errors.
+#' @param time A vector contains observation ties or a matrix if time points are different between dimesion.
+#' @param    ode.model An R function that computes the time derivative of the ODE model given observations of states variable and structural parameters.
+#' @param    par.names The names of structural parameters defined in the 'ode.model'.
+#' @param  state.names The names of state variables defined in the 'ode.model'.
+#' @param  par.initial Initial value of structural parameters to be optimized.
+#' @param   basis.list A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.
+#' @param    lambda Penalty parameter.
+#' @param     controls A list of control parameters. See ‘Details’.
 #'
-#' @return
+#' @details The \code{controls} argument is a list providing addition inputs for the nonlinear least square optimizer:
+#' \itemize{
+#'\item \code{nquadpts} Determine the number of quadrature points for approximating an integral. Default is 101.
+#'\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuissance parameters.
+#'\item \code{tau} Initial value of Marquardt parameter. Small values indicate good initial values for structural parameters.
+#'\item \code{tolx} Tolerance for parameters of objective functions. Default is set at 1e-6.
+#'\item \code{tolg} Tolerance for the gradient of parameters of objective functions. Default is set at 1e-6.
+#'\item \code{maxeval} The maximum number of evaluation of the optimizer. Default is set at 20.
+#'}
 #'
-#' @return
-#' @export
+#' @return   \item{structural.par}{The structural parameters of the ODE model.}
+#'
+#' @return    \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
 PC_ODE_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial,range, basis.list,par.names,state.names ,lambda = NULL, controls = NULL){
   #Set up default controls for optimizations and quadrature evaluation
   con.default <- list(nquadpts = 101, smooth.lambda = 1e2, tau = 0.01, tolx = 1e-6,tolg = 1e-6, maxeval = 20)
@@ -987,15 +1014,15 @@ PC_ODE_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial,ran
 
 #' @title Outter objective function (likelihood and Single dimension version)
 #' @description An objective function of the structural parameter computes the measure of fit.
-#' @usage
-#' @param
-#' @param
-#' @param
-#' @param
-#' @param
+#' @usage outterobj_lkh_1d(ode.parameter, basis.initial, derivative.model, likelihood.fun, inner.input)
+#' @param ode.parameter Structural parameters of the ODE model.
+#' @param basis.initial Initial values of the basis coefficients for nonlinear least square optimization.
+#' @param derivative.model The function defines the ODE model and is the same as the ode.model in 'PC_ODE'
+#' @param likelihood.fun The likelihood or loglikelihood function of the errors.
+#' @param inner.input Input that will be passed to the inner objective function. Contains dependencies for the optimization, including observations, penalty parameter lambda, and etc..
 #'
-#' @return
-#'
+#' @return neglik The negative of the likelihood or the loglikelihood function that will be passed further to the 'optim' function.
+
 outterobj_lkh_1d <- function(ode.parameter, basis.initial , derivative.model, likelihood.fun, inner.input){
 
   #Profiled estimation on the nuissance parameters
@@ -1009,20 +1036,19 @@ outterobj_lkh_1d <- function(ode.parameter, basis.initial , derivative.model, li
   residual <- yobs - xhat
   lik.eval <-likelihood.fun(residual)
 
-  return(-lik.eval)
+  return(neglik = -lik.eval)
 }
 
-#' @title Inner objective function (Likelihood and Single dimension version )
-#' @description
-#' @usage
-#' @param
-#' @param
-#' @param
-#' @param
-#' @param
+#' @title Inner objective function (Likelihood and Single dimension version)
+#' @description An objective function combines the likelihood or loglikelihood of errors from each dimension of state variables and the penalty controls how the state estimates fail to satisfy the ODE model.
+#' @usage innerobj_lkh_1d(basis_coef, ode.par, input, derive.model, likelihood.fun)
+#' @param basis_coef Basis coefficients for interpolating observations given a basis boject.
+#' @param ode.par Structural parameters of the ODD model.
+#' @param input Contains dependencies for the optimization, including observations, ode penalty, and etc..
+#' @param derivde.model The function defines the ODE model and is the same as the ode.model in 'PC_ODE'.
+#' @param likelihood.fun The likelihood or loglikelihood function of the errors.
 #'
-#' @return
-#'
+#' @return obj.eval The evaluation of the inner objective function.
 innerobj_lkh_1d <- function(basis_coef, ode.par, input, derive.model,likelihood.fun){
   yobs    <- input[[1]]
   Phi.mat <- input[[2]]
