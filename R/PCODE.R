@@ -1034,7 +1034,13 @@ outterobj_lkh_1d <- function(ode.parameter, basis.initial , derivative.model, li
   Phi.mat <- inner.input[[2]]
   xhat     <- Phi.mat %*% basis_coef
   residual <- yobs - xhat
-  lik.eval <-likelihood.fun(residual)
+  if (myCount(likelihood.fun) == 1){
+    lik.eval <- likelihood.fun(residual)
+  }else{
+    if(myCount(likelihood.fun) == 2){
+      lik.eval <- likelihood.fun(yobs,xhat)
+    }
+  }
 
   return(neglik = -lik.eval)
 }
@@ -1050,6 +1056,7 @@ outterobj_lkh_1d <- function(ode.parameter, basis.initial , derivative.model, li
 #'
 #' @return obj.eval The evaluation of the inner objective function.
 innerobj_lkh_1d <- function(basis_coef, ode.par, input, derive.model,likelihood.fun){
+
   yobs    <- input[[1]]
   Phi.mat <- input[[2]]
   lambda  <- input[[3]]
@@ -1062,7 +1069,14 @@ innerobj_lkh_1d <- function(basis_coef, ode.par, input, derive.model,likelihood.
   #Part 1.
   xhat     <- Phi.mat %*% basis_coef
   residual <- yobs - xhat
-  lik.eval <- likelihood.fun(residual)
+  if (myCount(likelihood.fun) == 1){
+    lik.eval <- likelihood.fun(residual)
+  }else{
+    if(myCount(likelihood.fun) == 2){
+      lik.eval <- likelihood.fun(yobs,xhat)
+    }
+  }
+
   #Part 2.
   penalty_residual <- rep(NA, length(quadwts))
   #Use composite Simpson's rule to calculate the integral of residual
@@ -1085,3 +1099,4 @@ innerobj_lkh_1d <- function(basis_coef, ode.par, input, derive.model,likelihood.
   obj.eval <- sum(penalty_residual^2)-lik.eval
   return(obj.eval)
 }
+myCount <- function(...) {length(match.call())}
