@@ -1002,7 +1002,7 @@ PC_ODE_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial,ran
   inner.input = list(data, Phi.mat, lambda, Qmat, Q.D1mat,quadts,quadwts,time,
                      state.names,par.names)
 
-  theta.final <- optim(par.initial, outterobj_lkh_1d,basis.initial = initial_coef, derivative.model = ode.model,
+  theta.final <- optim(par.initial, outterobj_lkh_1d,basis.initial = initial_coef, derivative.model = ode.model,control=list(trace=1),
                        inner.input = inner.input, likelihood.fun = likelihood.fun,method='Brent',lower = range[1],upper = range[2])$par
 
   basiscoef <- optim(initial_coef, innerobj_lkh_1d, ode.par = theta.final, input =inner.input, derive.model = ode.model, likelihood.fun = likelihood.fun)$par
