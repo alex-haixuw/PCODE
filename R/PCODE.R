@@ -7,6 +7,7 @@
 #' @param    par.names The names of structural parameters defined in the 'ode.model'.
 #' @param  state.names The names of state variables defined in the 'ode.model'.
 #' @param  par.initial Initial value of structural parameters to be optimized.
+#' @param likelihood.fun A likelihood function passed to PCODE in case of that the error terms do not have a Normal distribution.
 #' @param   basis.list A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.
 #' @param    lambda Penalty parameter.
 #' @param     controls A list of control parameters. See ‘Details’.
@@ -67,17 +68,24 @@
 #'                       controls = list(smooth.lambda = 1e2,verbal = 1,maxeval = 200))
 
 #' @export
-PC_ODE <- function(data, time, ode.model,par.names,state.names,  par.initial, basis.list, lambda = NULL,controls = NULL){
+PC_ODE <- function(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,controls = NULL){
     #Set up default controls for optimizations and quadrature evaluation
     con.default <- list(nquadpts = 101, smooth.lambda = 1e2, tau = 0.01, tolx = 1e-6,tolg = 1e-6, maxeval = 20)
     #Replace default with user's input
     con.default[(namc <- names(controls))] <- controls
     con.now  <- con.default
 
-      if(length(state.names) == 1 ){
-           result <- PC_ODE_1d(data = data, time = time, ode.model = ode.model, par.initial = par.initial,
-                               basis = basis.list, lambda = lambda, controls = con.now)
-           return(list(structural.par = result$structural.par, nuissance.par = result$nuissance.par))
+      if(length(state.names) == 1){
+           if (!is.function(likelihood.fun)){
+             result <- PC_ODE_1d(data = data, time = time, ode.model = ode.model, par.initial = par.initial,
+                                 basis = basis.list, lambda = lambda, controls = con.now)
+             return(list(structural.par = result$structural.par, nuissance.par = result$nuissance.par))
+           }else{
+             result <- PC_ODE_lkh_1d(data = data, time = time, likelihood.fun = likelihood.fun,ode.model = ode.model,
+                                     par.initial = par.initial, range = c(0,1), par.names = par.names, state.names = state.names,
+                                     basis.list = basis.list, lambda = lambda, controls = con.now)
+             return(list(structural.par = result$structural.par, nuissance.par = result$nuissance.par))
+           }
         }else{
 
 
@@ -1099,4 +1107,6 @@ innerobj_lkh_1d <- function(basis_coef, ode.par, input, derive.model,likelihood.
   obj.eval <- sum(penalty_residual^2)-lik.eval
   return(obj.eval)
 }
+
+
 myCount <- function(...) {length(match.call())}
