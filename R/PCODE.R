@@ -10,7 +10,7 @@
 #' @param likelihood.fun A likelihood function passed to PCODE in case of that the error terms do not have a Normal distribution.
 #' @param   basis.list A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.
 #' @param    lambda Penalty parameter.
-#' @param     controls A list of control parameters. See ‘Details’.
+#' @param     controls A list of control parameters. See Details.
 #'
 #' @details The \code{controls} argument is a list providing addition inputs for the nonlinear least square optimizer:
 #' \itemize{
