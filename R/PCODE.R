@@ -1126,7 +1126,7 @@ myCount <- function(...) {length(match.call())}
 bootsvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,bootsrep,controls = NULL){
      #Initial run
      result.ini <- PC_ODE(data, time, ode.model,par.names,state.names, likelihood.fun,
-                      par.initial, basis.list, lambda = NULL,controls = NULL)
+                      par.initial, basis.list, lambda = lambda,controls = controls)
      #1D or MD case
      if(length(state.names) == 1){
        nuipar.ini <- result.ini$nuissance.par
@@ -1135,16 +1135,27 @@ bootsvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun
        residual   <- data - state.est
        var.est    <- var(residual)
 
+       names(state.est)                 <- state.names
+       temp.initial <- result.ini$structural.par
+       names(result.ini$structural.par) <- par.names
        #preallocate spae for structural parameters
-       boots.res <- matrix(NA, nrow = bootstrap, ncol = length(par.names))
+       boots.res <- matrix(NA, nrow = bootsrep, ncol = length(par.names))
+       #modify the arguments of the ode model
+       tempmodel <- function(t, state,parameters){
+         return(ode.model(state = state, parameters = parameters))
+       }
        for (iter in 1:bootsrep){
-         data.boot <- state.est + rnorm(length(state.est),mean = 0 , var = var.est)
-         result    <- PC_ODE(data.boot, time, ode.model,par.names,state.names,
-                          par.initial, basis.list, lambda = NULL,controls = NULL)
+         print(paste('Running on bootstrap iteration: ',iter,sep=''))
+         #data.boot <- state.est + rnorm(length(state.est),mean = 0 , sd = sqrt(var.est))
+         data.boot <- ode(y=state.est[1],times=time,func=tempmodel,parms = result.ini$structural.par)[,-1] +
+                      rnorm(length(state.est),mean = 0 , sd = sqrt(var.est))
+         result    <- PC_ODE(data = data.boot, time = time, ode.model = ode.model,
+                             par.names = par.names, state.names = state.names, par.initial =  temp.initial,
+                             basis.list = basis.list, lambda = lambda,controls = controls)
          boots.res[iter,] <- result$structural.par
        }
        boots.var <- apply(boots.res,2, var)
-       colnames(boots.var) <- par.names
+       names(boots.var) <- par.names
      }else{
 
      }
@@ -1163,6 +1174,33 @@ return(boots.var)
 #' @param
 #'
 #' @return
-numericvar <- function(){
+numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,stepsize,controls = NULL){
+      #Initial run
+      result <- PC_ODE(data, time, ode.model,par.names,state.names, likelihood.fun,
+                       par.initial, basis.list, lambda = lambda,controls = controls)
+
+      struc.res <- result$structural.par
+      nuis.res  <- result$nuissance.par
+      if (length(par.names == 1)){
+        upper.eval  <-
+        center.eval <-
+        lower.eval  <-
+      }else{
+
+      }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 }
