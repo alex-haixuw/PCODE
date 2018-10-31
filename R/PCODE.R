@@ -1110,3 +1110,59 @@ innerobj_lkh_1d <- function(basis_coef, ode.par, input, derive.model,likelihood.
 
 
 myCount <- function(...) {length(match.call())}
+
+
+#' @title Bootstrap variance of structural parameters.
+#' @description
+#' @usage
+#' @param
+#' @param
+#' @param
+#' @param
+#' @param
+#'
+#' @return
+
+bootsvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,bootsrep,controls = NULL){
+     #Initial run
+     result.ini <- PC_ODE(data, time, ode.model,par.names,state.names, likelihood.fun,
+                      par.initial, basis.list, lambda = NULL,controls = NULL)
+     #1D or MD case
+     if(length(state.names) == 1){
+       nuipar.ini <- result.ini$nuissance.par
+       phi.ini    <- eval.basis(time, basis.list)
+       state.est  <- phi.ini %*% nuipar.ini
+       residual   <- data - state.est
+       var.est    <- var(residual)
+
+       #preallocate spae for structural parameters
+       boots.res <- matrix(NA, nrow = bootstrap, ncol = length(par.names))
+       for (iter in 1:bootsrep){
+         data.boot <- state.est + rnorm(length(state.est),mean = 0 , var = var.est)
+         result    <- PC_ODE(data.boot, time, ode.model,par.names,state.names,
+                          par.initial, basis.list, lambda = NULL,controls = NULL)
+         boots.res[iter,] <- result$structural.par
+       }
+       boots.var <- apply(boots.res,2, var)
+       colnames(boots.var) <- par.names
+     }else{
+
+     }
+
+return(boots.var)
+
+}
+
+#' @title Numeric estimation of variance of structural parameters.
+#' @description
+#' @usage
+#' @param
+#' @param
+#' @param
+#' @param
+#' @param
+#'
+#' @return
+numericvar <- function(){
+
+}
