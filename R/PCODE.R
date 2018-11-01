@@ -1182,6 +1182,10 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
       struc.res <- result$structural.par
       nuis.res  <- result$nuissance.par
       if (length(par.names == 1)){
+        basis.eval.list <- prepare_basis(basis.list, times = time, nquadpts = controls$nquadpts)
+        inner.input = list(data, Phi.mat, lambda, Qmat, Q.D1mat,quadts,quadwts,time,
+                           state.names,par.names)
+
         upper.eval  <-
         center.eval <-
         lower.eval  <-
