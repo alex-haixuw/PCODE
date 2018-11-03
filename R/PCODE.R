@@ -1183,12 +1183,17 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
       nuis.res  <- result$nuissance.par
       if (length(par.names == 1)){
         basis.eval.list <- prepare_basis(basis.list, times = time, nquadpts = controls$nquadpts)
-        inner.input = list(data, Phi.mat, lambda, Qmat, Q.D1mat,quadts,quadwts,time,
-                           state.names,par.names)
+        inner.input <- list(data, basis.eval.list$Phi.mat, lambda, basis.eval.list$Qmat, basis.eval.list$Q.D1mat,
+                            basis.eval.list$quadts,basis.eval.list$quadwts,time, state.names,par.names)
+        upper.eval  <- outterobj(struc.res + stepsize, basis.initial = nuis.res, derivative.model  = ode.model,
+                                 inner.input = inner.input, NLS = TRUE)
+        center.eval <-outterobj(struc.res , basis.initial = nuis.res, derivative.model  = ode.model,
+                                 inner.input = inner.input, NLS = TRUE)
+        lower.eval  <-outterobj(struc.res - stepsize, basis.initial = nuis.res, derivative.model  = ode.model,
+                                 inner.input = inner.input, NLS = TRUE)
 
-        upper.eval  <-
-        center.eval <-
-        lower.eval  <-
+        d_H2_theta2 <- (upper.eval - 2 * center.eval + lower.eval)/(stepsize^2)
+
       }else{
 
       }
