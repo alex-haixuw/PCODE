@@ -1175,43 +1175,47 @@ return(boots.var)
 #'
 #' @return
 numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,stepsize,controls = NULL){
+      #Set up default controls for optimizations and quadrature evaluation
+      con.default <- list(nquadpts = 101, smooth.lambda = 1e2, tau = 0.01, tolx = 1e-6,tolg = 1e-6, maxeval = 20)
+      #Replace default with user's input
+      con.default[(namc <- names(controls))] <- controls
+      con.now  <- con.default
       #Initial run
       result <- PC_ODE(data, time, ode.model,par.names,state.names, likelihood.fun,
-                       par.initial, basis.list, lambda = lambda,controls = controls)
+                       par.initial, basis.list, lambda = lambda,controls = con.now)
 
       struc.res <- result$structural.par
       nuis.res  <- result$nuissance.par
       if (length(par.names == 1)){
-        basis.eval.list <- prepare_basis(basis.list, times = time, nquadpts = controls$nquadpts)
+        basis.eval.list <- prepare_basis(basis.list, times = time, nquadpts = con.now$nquadpts)
         inner.input <- list(data, basis.eval.list$Phi.mat, lambda, basis.eval.list$Qmat, basis.eval.list$Q.D1mat,
                             basis.eval.list$quadts,basis.eval.list$quadwts,time, state.names,par.names)
-        upper.eval  <- outterobj(struc.res + stepsize, basis.initial = nuis.res, derivative.model  = ode.model,
-                                 inner.input = inner.input, NLS = TRUE)
-        center.eval <-outterobj(struc.res , basis.initial = nuis.res, derivative.model  = ode.model,
-                                 inner.input = inner.input, NLS = TRUE)
-        lower.eval  <-outterobj(struc.res - stepsize, basis.initial = nuis.res, derivative.model  = ode.model,
-                                 inner.input = inner.input, NLS = TRUE)
+        upper.eval  <- sum(outterobj(struc.res + stepsize, basis.initial = nuis.res, derivative.model  = ode.model,
+                                 inner.input = inner.input, NLS = TRUE)^2)
+        center.eval <- sum((inner.input[[2]] %*% nuis.res - data)^2)
+        lower.eval  <- sum(outterobj(struc.res - stepsize, basis.initial = nuis.res, derivative.model  = ode.model,
+                                 inner.input = inner.input, NLS = TRUE)^2)
 
         d_H2_theta2 <- (upper.eval - 2 * center.eval + lower.eval)/(stepsize^2)
 
 
        #-------------------------------
        H_deriv_wrt_y <- rep(NA, length(time))
-       inner_coef_upper <- nls_optimize.inner(innerobj, basis.initial = nuis.res,
+       inner_coef_upper <- nls_optimize.inner(innerobj, nuis.res,
                                               ode.par = struc.res + stepsize,
                                               derive.model = ode.model, input = inner.input,
                                               options=list(maxeval = 50))$par
-       inner_coef_lower <- nls_optimize.inner(innerobj, basis.initial = nuis.res,
+       inner_coef_lower <- nls_optimize.inner(innerobj, nuis.res,
                                               ode.par = struc.res - stepsize,
                                               derive.model = ode.model, input = inner.input,
                                               options=list(maxeval = 50))$par
        obs_at_upper <- inner.input[[2]] %*%  inner_coef_upper
        obs_at_lower <- inner.input[[2]] %*%  inner_coef_lower
        for (index in 1:length(time)){
-         H_deriv_wrt_y[index] <- (data[index] + y_stepsize - obs_at_upper[index])^2 -
-                               (data[index] - y_stepsize - obs_at_upper[index])^2 -
-                               (data[index] + y_stepsize - obs_at_lower[index])^2 +
-                               (data[index] - y_stepsize - obs_at_lower[index])^2
+         H_deriv_wrt_y[index] <- ((data[index] + y_stepsize - obs_at_upper[index])^2 -
+                                 (data[index] - y_stepsize - obs_at_upper[index])^2 -
+                                 (data[index] + y_stepsize - obs_at_lower[index])^2 +
+                                 (data[index] - y_stepsize - obs_at_lower[index])^2)/(4 * stepsize * y_stepsize)
        }
 
        if (length(par.names) == 1){
@@ -1220,7 +1224,7 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
 
        }
 
-      par.var <- theta_deriv_wrt_y %*% t(theta_deriv_wrt_y) * var(data)
+      par.var <- theta_deriv_wrt_y %*% (theta_deriv_wrt_y) * var(data)
 
 
 
