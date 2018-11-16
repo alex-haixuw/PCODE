@@ -1212,10 +1212,11 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
        obs_at_upper <- inner.input[[2]] %*%  inner_coef_upper
        obs_at_lower <- inner.input[[2]] %*%  inner_coef_lower
        for (index in 1:length(time)){
-         H_deriv_wrt_y[index] <- ((data[index] + y_stepsize - obs_at_upper[index])^2 -
-                                 (data[index] - y_stepsize - obs_at_upper[index])^2 -
-                                 (data[index] + y_stepsize - obs_at_lower[index])^2 +
-                                 (data[index] - y_stepsize - obs_at_lower[index])^2)/(4 * stepsize * y_stepsize)
+         a = (data[index] + y_stepsize - obs_at_upper[index])^2
+         b = (data[index] - y_stepsize - obs_at_upper[index])^2
+         c = (data[index] + y_stepsize - obs_at_lower[index])^2
+         d = (data[index] - y_stepsize - obs_at_lower[index])^2
+         H_deriv_wrt_y[index] <- (a-b-c+d)/(4 * stepsize * y_stepsize)
        }
 
        if (length(par.names) == 1){
@@ -1224,18 +1225,9 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
 
        }
 
-      par.var <- theta_deriv_wrt_y %*% (theta_deriv_wrt_y) * var(data)
-
-
-
-
-
-
+      par.var <- sum(theta_deriv_wrt_y^2) * var(data)
 
       }else{
-
-
-
 
 
       }
