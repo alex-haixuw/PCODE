@@ -1174,7 +1174,7 @@ return(boots.var)
 #' @param
 #'
 #' @return
-numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,stepsize,controls = NULL){
+numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,stepsize,controls = NULL,y_stepsize){
       #Set up default controls for optimizations and quadrature evaluation
       con.default <- list(nquadpts = 101, smooth.lambda = 1e2, tau = 0.01, tolx = 1e-6,tolg = 1e-6, maxeval = 20)
       #Replace default with user's input
