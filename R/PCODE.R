@@ -1127,7 +1127,8 @@ bootsvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun
      #Initial run
      result.ini <- PC_ODE(data, time, ode.model,par.names,state.names, likelihood.fun,
                       par.initial, basis.list, lambda = lambda,controls = controls)
-     #1D or MD case
+
+     #1D or MD case for least square functions
      if(length(state.names) == 1){
        nuipar.ini <- result.ini$nuissance.par
        phi.ini    <- eval.basis(time, basis.list)
