@@ -106,6 +106,7 @@ PC_ODE <- function(data, time, ode.model,par.names,state.names, likelihood.fun =
             Bmat    = basismat2 + con.now$smooth.lambda*Rmat;
             #Initial basis coefficients
             initial_coef[[ii]] = ginv(Bmat)%*%t(basis.eval.list[[ii]]$Phi.mat)%*%data[,ii]
+            #// TODO: need to check colnames of data
             inner.input[[ii]]  = list(data[,ii], basis.eval.list[[ii]]$Phi.mat, lambda,
                                       basis.eval.list[[ii]]$Qmat, basis.eval.list[[ii]]$Q.D1mat,
                                       basis.eval.list[[ii]]$quadts, basis.eval.list[[ii]]$quadwts,time,
@@ -1124,9 +1125,18 @@ myCount <- function(...) {length(match.call())}
 #' @return
 
 bootsvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,bootsrep,controls = NULL){
+    #
+    if (nrow(data) > ncol(data)){
+      colnames(data) <- state.names
+    }else{
+      rownames(data) <- statenames
+    }
+
+
      #Initial run
      result.ini <- PC_ODE(data, time, ode.model,par.names,state.names, likelihood.fun,
                       par.initial, basis.list, lambda = lambda,controls = controls)
+
 
      #1D  case for least square functions
      if(length(state.names) == 1 && length(par.names) == 1){
@@ -1169,6 +1179,7 @@ bootsvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun
        nuipar.ini  <- result.ini$nuissance.par
        #allocate vector for storing state and variance estimate
        state.est   <- matrix(NA, ncol = length(state.names), nrow = length(time))
+       colnames(state.est) <- state.names
        var.est     <- rep(NA, length(state.names))
 
 
@@ -1179,14 +1190,17 @@ bootsvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun
 
        for (jj in 1:length(state.names)){
          basis.index[jj+1]    <- basis.list[[jj]]$nbasis
-         coef.list[[jj]]      <- basis_coef[(basis.index[jj]+1):(basis.index[jj]+basis.index[jj+1])]
+         coef.list[[jj]]      <- nuipar.ini[(basis.index[jj]+1):(basis.index[jj]+basis.index[jj+1])]
          phi.ini              <- eval.basis(time, basis.list[[jj]])
-         state.est[,jj]            <- phi.ini %*% coef.list[[jj]]
-         residual             <- (data$state.names[[jj]] - state.est)
+         state.est[,jj]       <- phi.ini %*% coef.list[[jj]]
+         if (nrow(data) > ncol(data)){
+           residual             <- (data[,state.names[jj]] - state.est[,state.names[jj]])
+         }else{
+           residual             <- (data[state.names[jj],] - state.est[,state.names[jj]])
+         }
          var.est[jj]          <- var(residual)
        }
 
-       colnames(state.est)                 <- state.names
        temp.initial <- result.ini$structural.par
        names(result.ini$structural.par) <- par.names
        #preallocate spae for structural parameters
@@ -1216,26 +1230,6 @@ bootsvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun
 
 return(boots.var)
 }
-
-
-
-
-
-#get the dimesion of the ODE model
-ndim     <- length(input)
-npoints  <- length(unlist(input[[1]][8]))
-nbasis   <- rep(NA, ndim+1)
-Xhat     <- matrix(NA, nrow = npoints, ncol = ndim)
-residual <- matrix(NA, nrow = npoints, ncol = ndim)
-
-state.names <- input[[1]][[9]]
-model.names <- input[[1]][[10]]
-Xt   <- matrix(NA, nrow = length(input[[1]][[7]]),ncol= ndim)
-dXdt <- matrix(NA, nrow = length(input[[1]][[7]]),ncol= ndim)
-
-
-
-
 
 
 
