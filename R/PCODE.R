@@ -1168,11 +1168,8 @@ bootsvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun
        boots.var <- apply(boots.res,2, var)
        names(boots.var) <- par.names
 
-     }else{
-       if (length(state.names) == 1 && length(par.names) >= 2){
-
-       }
      }
+
      #MD case for least square
      if (length(state.names) >= 2 && length(par.names) >=2){
        #Get basis coefficients
@@ -1222,10 +1219,6 @@ bootsvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun
        boots.var <- apply(boots.res,2, var)
        names(boots.var) <- par.names
 
-     }else{
-        if (length(state.names) >= 2 && length(par.names) ==1){
-
-        }
      }
 
 return(boots.var)
@@ -1257,7 +1250,7 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
 
       struc.res <- result$structural.par
       nuis.res  <- result$nuissance.par
-      if (length(par.names == 1)){
+      if (length(state.names == 1)){
         basis.eval.list <- prepare_basis(basis.list, times = time, nquadpts = con.now$nquadpts)
         inner.input <- list(data, basis.eval.list$Phi.mat, lambda, basis.eval.list$Qmat, basis.eval.list$Q.D1mat,
                             basis.eval.list$quadts,basis.eval.list$quadwts,time, state.names,par.names)
@@ -1268,7 +1261,6 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
                                  inner.input = inner.input, NLS = TRUE)^2)
 
         d_H2_theta2 <- (upper.eval - 2 * center.eval + lower.eval)/(stepsize^2)
-
 
        #-------------------------------
        H_deriv_wrt_y <- rep(NA, length(time))
@@ -1288,22 +1280,21 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
          c = (data[index] + y_stepsize - obs_at_lower[index])^2
          d = (data[index] - y_stepsize - obs_at_lower[index])^2
          H_deriv_wrt_y[index] <- (a-b-c+d)/(4 * stepsize * y_stepsize)
-       }
+        }
 
        if (length(par.names) == 1){
           theta_deriv_wrt_y <- -(1/d_H2_theta2) * H_deriv_wrt_y
+          par.var <- sum(theta_deriv_wrt_y^2) * var(data)
        }else{
 
        }
 
-      par.var <- sum(theta_deriv_wrt_y^2) * var(data)
+
 
       }else{
 
 
       }
-
-
 
 
      return(par.var)
