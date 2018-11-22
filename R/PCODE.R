@@ -1293,8 +1293,38 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
       #Multiple dimension and parameters
       }else{
 
-            basis.eval.list <- prepare_basis(basis.list, times = time, nquadpts = con.now$nquadpts)
+            #evaluation of basis objects for each dimension over time points and quadrature points for further use
+            basis.eval.list <- lapply(basis.list, prepare_basis, times = time, nquadpts = con.now$nquadpts)
+            #Sort nuissance parameters into each dimension
+            #and prepare inner input for inner objective function
+            basis.index <- length(state.names) + 1
+            basis.index[1] <- 0
+            coef.list   <- list()
+            inner.input     <- list()
 
+            for (hh in 1:length(state.names)){
+                inner.input[[hh]] <- list(data[,state.names[hh]],
+                                          basis.eval.list[[hh]]$Phi.mat, lambda,
+                                          basis.eval.list[[hh]]$Qmat,   basis.eval.list[[hh]]$Q.D1mat,
+                                          basis.eval.list[[hh]]$quadts,   basis.eval.list[[hh]]$quadwts, time,
+                                           state.names, par.names)
+                basis.index[hh+1]    <- basis.list[[hh]]$nbasis
+                coef.list[[hh]]      <- nuis.res[(basis.index[hh]+1):(basis.index[hh]+basis.index[hh+1])]
+            }
+            #preallocate space for evaluations
+            d_H2_theta2  <- rep(NA, length(par.names))
+            upper.eval   <- rep(NA, length(par.names))
+            center.eval  <- rep(NA, length(par.names))
+            lower.eval   <- rep(NA, length(par.names))
+
+            par.upper <- struc.res + stepsize
+            par.lower <- struc.res - stepsize
+
+            for (par.index in 1:length(par.names)){
+                par.moveup    <-
+                par.movedown  <-
+                upper.eval[par.index] <-
+            }
 
 
 
