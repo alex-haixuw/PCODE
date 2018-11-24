@@ -1239,6 +1239,12 @@ return(boots.var)
 #'
 #' @return
 numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,stepsize,controls = NULL,y_stepsize){
+      #
+      if (nrow(data) > ncol(data)){
+        colnames(data) <- state.names
+      }else{
+        rownames(data) <- statenames
+      }
       #Set up default controls for optimizations and quadrature evaluation
       con.default <- list(nquadpts = 101, smooth.lambda = 1e2, tau = 0.01, tolx = 1e-6,tolg = 1e-6, maxeval = 20)
       #Replace default with user's input
@@ -1249,6 +1255,7 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
                        par.initial, basis.list, lambda = lambda,controls = con.now)
 
       struc.res <- result$structural.par
+      names(struc.res) <- par.names
       nuis.res  <- result$nuissance.par
       if (length(state.names == 1)){
             basis.eval.list <- prepare_basis(basis.list, times = time, nquadpts = con.now$nquadpts)
@@ -1297,10 +1304,14 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
             basis.eval.list <- lapply(basis.list, prepare_basis, times = time, nquadpts = con.now$nquadpts)
             #Sort nuissance parameters into each dimension
             #and prepare inner input for inner objective function
-            basis.index <- length(state.names) + 1
-            basis.index[1] <- 0
-            coef.list   <- list()
+            basis.index     <- length(state.names) + 1
+            basis.index[1]  <- 0
+            coef.list       <- list()
             inner.input     <- list()
+
+            state.est       <- matrix(NA, nrow = length(time),ncol = length(state.names))
+            state.residual  <- matrix(NA, nrow = length(time),ncol = length(state.names))
+            colnames(state.est) <- state.names
 
             for (hh in 1:length(state.names)){
                 inner.input[[hh]] <- list(data[,state.names[hh]],
@@ -1310,21 +1321,86 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
                                            state.names, par.names)
                 basis.index[hh+1]    <- basis.list[[hh]]$nbasis
                 coef.list[[hh]]      <- nuis.res[(basis.index[hh]+1):(basis.index[hh]+basis.index[hh+1])]
+                state.est[,state.names[hh]] <-  inner.input[[hh]][[2]] %*% coef.list[[hh]]
+                state.residual[,hh] <- state.est[,state.names[hh]] - data[,state.names[hh]]
             }
+
+
+
+
+
+
             #preallocate space for evaluations
             d_H2_theta2  <- rep(NA, length(par.names))
             upper.eval   <- rep(NA, length(par.names))
             center.eval  <- rep(NA, length(par.names))
             lower.eval   <- rep(NA, length(par.names))
 
-            par.upper <- struc.res + stepsize
-            par.lower <- struc.res - stepsize
 
             for (par.index in 1:length(par.names)){
-                par.moveup    <-
-                par.movedown  <-
-                upper.eval[par.index] <-
+                #Adding or subtrating stepsize
+                par.moveup    <- struc.res
+                par.movedown  <- struc.res
+                par.moveup[par.names[par.index]]      <-  struc.res[par.names[par.index]] + stepsize
+                par.movedown[par.names[par.index]]    <-  struc.res[par.names[par.index]] - stepsize
+
+                upper.eval[par.index]  <- outterobj_multi_nls(ode.parameter = par.moveup,
+                                              basis.initial = nuis.res, derivative.model = ode.model, inner.input = inner.input, NLS = FALSE)
+                center.eval[par.index] <- sum(as.vector(state.residual)^2)
+                lower.eval[par.index]  <- outterobj_multi_nls(ode.parameter = par.movedown,
+                                              basis.initial = nuis.res, derivative.model = ode.model, inner.input = inner.input, NLS = FALSE)
+
+                d_H2_theta2[par.index] <- (upper.eval[par.index] - 2 * center.eval[par.index] +
+                                           lower.eval[par.index])/(stepsize^2)
             }
+
+
+
+            #---------
+
+            #second term
+            H_deriv_wrt_y <- matrix(NA, nrow = length(time), ncol = length(state.names))
+
+            inner.coef.upper <- list()
+            inner.coef.lower <- list()
+
+            for (par.index in 1:length(par.names)){
+                    
+            }
+
+            for (dim.index in 1:length(state.names)){
+
+
+
+            }
+
+
+
+
+
+
+            inner_coef <- nls_optimize.inner(innerobj_multi, basis.initial, ode.par = ode.parameter, derive.model = derivative.model, options = list(maxeval = 50,tolx=1e-6,tolg=1e-6), input = inner.input,verbal=2)$par
+            ndim     <- length(inner.input)
+            npoints  <- length(inner.input[[1]][[8]])
+            basisnumber   <- rep(NA, ndim+1)
+            Xhat     <- matrix(NA, nrow = npoints, ncol = ndim)
+            residual <- matrix(NA, nrow = npoints, ncol = ndim)
+            #Turn a single vector 'inner_coef' into seperate locations
+            coef.list <- list()
+            basisnumber[1] <- 0
+            for (jj in 1:ndim){
+              basisnumber[jj+1]    <- ncol(inner.input[[jj]][[2]])
+               coef.list[[jj]] <- inner_coef[(basisnumber[jj]+1):(basisnumber[jj]+basisnumber[jj+1])]
+               #Basis expansion for j-th dimension
+               Xhat[,jj]       <- inner.input[[jj]][[2]] %*% coef.list[[jj]]
+               #Residual from basis expansion
+               residual[,jj]   <- inner.input[[jj]][[1]] - Xhat[,jj]
+            }
+
+
+
+
+
 
 
 
