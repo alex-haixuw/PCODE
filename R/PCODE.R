@@ -1365,7 +1365,21 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
             inner.coef.lower <- list()
 
             for (par.index in 1:length(par.names)){
-                    
+                par.moveup    <- struc.res
+                par.movedown  <- struc.res
+                par.moveup[par.names[par.index]]      <-  struc.res[par.names[par.index]] + stepsize
+                par.movedown[par.names[par.index]]    <-  struc.res[par.names[par.index]] - stepsize
+
+                inner.coef.upper[[par.index]] <- nls_optimize.inner(innerobj_multi, nuis.res,
+                                                 ode.par = par.moveup, derive.model = ode.model,
+                                                 options = list(maxeval = 50,tolx=1e-6,tolg=1e-6),
+                                                 input = inner.input,verbal=2)$par
+                inner.coef.lower[[par.index]] <- nls_optimize.inner(innerobj_multi, nuis.res,
+                                                 ode.par = par.movdedown, derive.model = ode.model,
+                                                 options = list(maxeval = 50,tolx=1e-6,tolg=1e-6),
+                                                 input = inner.input,verbal=2)$par
+
+
             }
 
             for (dim.index in 1:length(state.names)){
@@ -1379,23 +1393,7 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
 
 
 
-            inner_coef <- nls_optimize.inner(innerobj_multi, basis.initial, ode.par = ode.parameter, derive.model = derivative.model, options = list(maxeval = 50,tolx=1e-6,tolg=1e-6), input = inner.input,verbal=2)$par
-            ndim     <- length(inner.input)
-            npoints  <- length(inner.input[[1]][[8]])
-            basisnumber   <- rep(NA, ndim+1)
-            Xhat     <- matrix(NA, nrow = npoints, ncol = ndim)
-            residual <- matrix(NA, nrow = npoints, ncol = ndim)
-            #Turn a single vector 'inner_coef' into seperate locations
-            coef.list <- list()
-            basisnumber[1] <- 0
-            for (jj in 1:ndim){
-              basisnumber[jj+1]    <- ncol(inner.input[[jj]][[2]])
-               coef.list[[jj]] <- inner_coef[(basisnumber[jj]+1):(basisnumber[jj]+basisnumber[jj+1])]
-               #Basis expansion for j-th dimension
-               Xhat[,jj]       <- inner.input[[jj]][[2]] %*% coef.list[[jj]]
-               #Residual from basis expansion
-               residual[,jj]   <- inner.input[[jj]][[1]] - Xhat[,jj]
-            }
+
 
 
 
