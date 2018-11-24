@@ -1378,20 +1378,61 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
                                                  ode.par = par.movdedown, derive.model = ode.model,
                                                  options = list(maxeval = 50,tolx=1e-6,tolg=1e-6),
                                                  input = inner.input,verbal=2)$par
-
-
-            }
-
-            for (dim.index in 1:length(state.names)){
-
-
-
             }
 
 
+            coef.upper <- list()
+            coef.lower <- list()
+
+            basis.index     <- length(state.names) + 1
+            basis.index[1]  <- 0
+
+            for (ii in 1:length(par.names)){
+                for (hh in 1:length(state.names)){
+                    basis.index[hh+1]    <- basis.list[[hh]]$nbasis
+                    coef.upper[[ii]][[state.names[hh]]]  <- inner.coef.upper[[ii]][(basis.index[hh]+1):(basis.index[hh]+basis.index[hh+1])]
+                    coef.lower[[ii]][[state.names[hh]]]  <- inner.coef.lower[[ii]][(basis.index[hh]+1):(basis.index[hh]+basis.index[hh+1])]
+                }
+            }
 
 
+             obs_at_upper <- list()
+             for (ii in 1:length(par.names)){
+               obs_at_upper[[ii]]     <- matrix(NA, nrow = length(time), ncol = length(state.names))
+               for (jj in 1:length(state.names)){
+                 obs_at_upper[[ii]][,state.names[jj]] <- inner.input[jj]][[2]] %*% coef.upper[[ii]][[state.names[jj]]]
+               }
+             }
+             obs_at_lower <- list()
+             for (ii in 1:length(par.names)){
+               obs_at_lower[[ii]]     <- matrix(NA, nrow = length(time), ncol = length(state.names))
+               for (jj in 1:length(state.names)){
+                 obs_at_lower[[ii]][,state.names[jj]] <- inner.input[jj]][[2]] %*% coef.lower[[ii]][[state.names[jj]]]
+               }
+             }
 
+
+           for (par.index in 1:length(par.names)){
+
+             for (state.index in 1:length(state.names)){
+
+                  for(time.index in 1:length(time)){
+
+                  }
+             }
+
+           }
+
+
+            obs_at_upper <- inner.input[[2]] %*%  inner_coef_upper
+            obs_at_lower <- inner.input[[2]] %*%  inner_coef_lower
+            for (index in 1:length(time)){
+              a = (data[index] + y_stepsize - obs_at_upper[index])^2
+              b = (data[index] - y_stepsize - obs_at_upper[index])^2
+              c = (data[index] + y_stepsize - obs_at_lower[index])^2
+              d = (data[index] - y_stepsize - obs_at_lower[index])^2
+              H_deriv_wrt_y[index] <- (a-b-c+d)/(4 * stepsize * y_stepsize)
+             }
 
 
 
