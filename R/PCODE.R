@@ -1327,11 +1327,8 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
 
 
 
-
-
-
             #preallocate space for evaluations
-            d_H2_theta2  <- rep(NA, length(par.names))
+            d_H2_theta2  <- matrix(NA, nrow = length(par.names), ncol = length(par.names))
             upper.eval   <- rep(NA, length(par.names))
             center.eval  <- rep(NA, length(par.names))
             lower.eval   <- rep(NA, length(par.names))
@@ -1350,15 +1347,39 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
                 lower.eval[par.index]  <- outterobj_multi_nls(ode.parameter = par.movedown,
                                               basis.initial = nuis.res, derivative.model = ode.model, inner.input = inner.input, NLS = FALSE)
 
-                d_H2_theta2[par.index] <- (upper.eval[par.index] - 2 * center.eval[par.index] +
-                                           lower.eval[par.index])/(stepsize^2)
+                d_H2_theta2[par.index,par.index] <- (upper.eval[par.index] - 2 * center.eval[par.index] +
+                                                     lower.eval[par.index])/(stepsize^2)
             }
 
 
+            for ( par.index in 1:length(par.names)){
+                for (ii in par.index:(length(par.names)-1)){
+                    par.a <- par.b <- par.c <- par.d <- struc.res
+                    par.a[par.index,(ii+1)] <- struc.res[par.index,(ii+1)] + stepsize
+                    par.b[par.index] <- struc.res[par.index] + stepsize
+                    par.b[ii+1]      <- struc.res[ii] - stepsize
+                    par.b[par.index] <- struc.res[par.index] - stepsize
+                    par.b[ii+1]      <- struc.res[ii] + stepsize
+                    par.d[par.index,(ii+1)] <- struc.res[par.index,(ii+1)] - stepsize
+                    eval.a = outterobj_multi_nls(ode.parameter = par.a,
+                                            basis.initial = nuis.res, derivative.model = ode.model,
+                                            inner.input = inner.input, NLS = FALSE)
+                    eval.b = outterobj_multi_nls(ode.parameter = par.b,
+                                            basis.initial = nuis.res, derivative.model = ode.model,
+                                            inner.input = inner.input, NLS = FALSE)
+                    eval.c = outterobj_multi_nls(ode.parameter = par.c,
+                                            basis.initial = nuis.res, derivative.model = ode.model,
+                                            inner.input = inner.input, NLS = FALSE)
+                    eval.d = outterobj_multi_nls(ode.parameter = par.d,
+                                            basis.initial = nuis.res, derivative.model = ode.model,
+                                            inner.input = inner.input, NLS = FALSE)
+                    d_H2_theta2[par.index, ii+1] <- (eval.a-eval.b-eval.c+eval.d)/(4 * stepsiz * stepsize)
+                }
+            }
 
             #---------
 
-            #second term
+            #second term (MD)
             H_deriv_wrt_y <- matrix(NA, nrow = length(time), ncol = length(state.names))
 
             inner.coef.upper <- list()
@@ -1411,34 +1432,27 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
                }
              }
 
+          H_deriv_wrt_y <- list()
 
-           for (par.index in 1:length(par.names)){
+          for (state.index in 1:length(state.names)){
+            H_deriv_wrt_y[[state.index]] <- matrix(NA, nrow = length(time), ncol = length(par.names))
+            for (par.index in 1:length(par.names)){
 
-             for (state.index in 1:length(state.names)){
+              for(time.index in 1:length(time)){
+                  a <- (data[time[time.index],state.names[state.index]] + y_stepsize -
+                        obs_at_upper[[par.index]][time[time.index],state.names[state.index]])^2
+                  b <- (data[time[time.index],state.names[state.index]] - y_stepsize -
+                        obs_at_upper[[par.index]][time[time.index],state.names[state.index]])^2
+                  c <- (data[time[time.index],state.names[state.index]] + y_stepsize -
+                        obs_at_lower[[par.index]][time[time.index],state.names[state.index]])^2
+                  d <- (data[time[time.index],state.names[state.index]] - y_stepsize -
+                        obs_at_lower[[par.index]][time[time.index],state.names[state.index]])^2
+                  H_deriv_wrt_y[[state.index]][time.index, par.index]  <- (a-b-c+d)/(4 * stepsize * y_stepsize)
 
-                  for(time.index in 1:length(time)){
+              }
 
-                  }
-             }
-
-           }
-
-
-            obs_at_upper <- inner.input[[2]] %*%  inner_coef_upper
-            obs_at_lower <- inner.input[[2]] %*%  inner_coef_lower
-            for (index in 1:length(time)){
-              a = (data[index] + y_stepsize - obs_at_upper[index])^2
-              b = (data[index] - y_stepsize - obs_at_upper[index])^2
-              c = (data[index] + y_stepsize - obs_at_lower[index])^2
-              d = (data[index] - y_stepsize - obs_at_lower[index])^2
-              H_deriv_wrt_y[index] <- (a-b-c+d)/(4 * stepsize * y_stepsize)
-             }
-
-
-
-
-
-
+            }
+          }
 
 
 
