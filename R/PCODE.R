@@ -1453,9 +1453,19 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
 
             }
           }
+          #
+          second_H <- do.call(H_deriv_wrt_y,rbind)
+          dtheta_dy <- -solve(d_H2_theta2) %*% second_H
 
+          par.var <- rep(NA, length(par.names))
+          for (jj in 1:length(par.names)){
+              temp     <- dtheta_dy[,jj]
+              temp.mat <- matrix(dtheta_dy, ncol = length(state.names), byrow = FALSE)
 
+              par.var[jj] <-  t(temp.mat) %*%  (temp.mat %*% var(data))
+          }
 
+          names(par.var) <- par.names
 
       }
 
