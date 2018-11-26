@@ -1352,15 +1352,15 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
             }
 
 
-            for ( par.index in 1:length(par.names)){
+            for ( par.index in 1:(length(par.names)-1)){
                 for (ii in par.index:(length(par.names)-1)){
                     par.a <- par.b <- par.c <- par.d <- struc.res
-                    par.a[par.index,(ii+1)] <- struc.res[par.index,(ii+1)] + stepsize
+                    par.a[c(par.index,(ii+1))] <- struc.res[c(par.index,(ii+1))] + stepsize
                     par.b[par.index] <- struc.res[par.index] + stepsize
                     par.b[ii+1]      <- struc.res[ii] - stepsize
                     par.b[par.index] <- struc.res[par.index] - stepsize
                     par.b[ii+1]      <- struc.res[ii] + stepsize
-                    par.d[par.index,(ii+1)] <- struc.res[par.index,(ii+1)] - stepsize
+                    par.d[c(par.index,(ii+1))] <- struc.res[c(par.index,(ii+1))] - stepsize
                     eval.a = outterobj_multi_nls(ode.parameter = par.a,
                                             basis.initial = nuis.res, derivative.model = ode.model,
                                             inner.input = inner.input, NLS = FALSE)
@@ -1373,10 +1373,10 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
                     eval.d = outterobj_multi_nls(ode.parameter = par.d,
                                             basis.initial = nuis.res, derivative.model = ode.model,
                                             inner.input = inner.input, NLS = FALSE)
-                    d_H2_theta2[par.index, ii+1] <- (eval.a-eval.b-eval.c+eval.d)/(4 * stepsiz * stepsize)
+                    d_H2_theta2[par.index, ii+1] <- (eval.a-eval.b-eval.c+eval.d)/(4 * stepsize * stepsize)
                 }
             }
-
+            d_H2_theta2[lower.tri(d_H2_theta2)] <- t(d_H2_theta2)[lower.tri(d_H2_theta2)]
             #---------
 
             #second term (MD)
@@ -1396,7 +1396,7 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
                                                  options = list(maxeval = 50,tolx=1e-6,tolg=1e-6),
                                                  input = inner.input,verbal=2)$par
                 inner.coef.lower[[par.index]] <- nls_optimize.inner(innerobj_multi, nuis.res,
-                                                 ode.par = par.movdedown, derive.model = ode.model,
+                                                 ode.par = par.movedown, derive.model = ode.model,
                                                  options = list(maxeval = 50,tolx=1e-6,tolg=1e-6),
                                                  input = inner.input,verbal=2)$par
             }
@@ -1409,10 +1409,11 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
             basis.index[1]  <- 0
 
             for (ii in 1:length(par.names)){
+
                 for (hh in 1:length(state.names)){
                     basis.index[hh+1]    <- basis.list[[hh]]$nbasis
-                    coef.upper[[ii]][[state.names[hh]]]  <- inner.coef.upper[[ii]][(basis.index[hh]+1):(basis.index[hh]+basis.index[hh+1])]
-                    coef.lower[[ii]][[state.names[hh]]]  <- inner.coef.lower[[ii]][(basis.index[hh]+1):(basis.index[hh]+basis.index[hh+1])]
+                    coef.upper[[ii]][[,state.names[hh]]]  <- inner.coef.upper[[ii]][(basis.index[hh]+1):(basis.index[hh]+basis.index[hh+1])]
+                    coef.lower[[ii]][[,state.names[hh]]]  <- inner.coef.lower[[ii]][(basis.index[hh]+1):(basis.index[hh]+basis.index[hh+1])]
                 }
             }
 
@@ -1421,14 +1422,14 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
              for (ii in 1:length(par.names)){
                obs_at_upper[[ii]]     <- matrix(NA, nrow = length(time), ncol = length(state.names))
                for (jj in 1:length(state.names)){
-                 obs_at_upper[[ii]][,state.names[jj]] <- inner.input[jj]][[2]] %*% coef.upper[[ii]][[state.names[jj]]]
+                 obs_at_upper[[ii]][,state.names[jj]] <- inner.input[[jj]][[2]] %*% coef.upper[[ii]][[state.names[jj]]]
                }
              }
              obs_at_lower <- list()
              for (ii in 1:length(par.names)){
                obs_at_lower[[ii]]     <- matrix(NA, nrow = length(time), ncol = length(state.names))
                for (jj in 1:length(state.names)){
-                 obs_at_lower[[ii]][,state.names[jj]] <- inner.input[jj]][[2]] %*% coef.lower[[ii]][[state.names[jj]]]
+                 obs_at_lower[[ii]][,state.names[jj]] <- inner.input[[jj]][[2]] %*% coef.lower[[ii]][[state.names[jj]]]
                }
              }
 
