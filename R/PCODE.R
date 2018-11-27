@@ -1238,7 +1238,7 @@ return(boots.var)
 #' @param
 #'
 #' @return
-numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,stepsize,controls = NULL,y_stepsize){
+numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,stepsize,y_stepsize,controls = NULL,){
       #
       if (nrow(data) > ncol(data)){
         colnames(data) <- state.names
@@ -1409,11 +1409,12 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
             basis.index[1]  <- 0
 
             for (ii in 1:length(par.names)){
-
+                coef.upper[[ii]] <- list()
+                coef.lower[[ii]] <- list()
                 for (hh in 1:length(state.names)){
                     basis.index[hh+1]    <- basis.list[[hh]]$nbasis
-                    coef.upper[[ii]][[,state.names[hh]]]  <- inner.coef.upper[[ii]][(basis.index[hh]+1):(basis.index[hh]+basis.index[hh+1])]
-                    coef.lower[[ii]][[,state.names[hh]]]  <- inner.coef.lower[[ii]][(basis.index[hh]+1):(basis.index[hh]+basis.index[hh+1])]
+                    coef.upper[[ii]][[state.names[hh]]]  <- inner.coef.upper[[ii]][(basis.index[hh]+1):(basis.index[hh]+basis.index[hh+1])]
+                    coef.lower[[ii]][[state.names[hh]]]  <- inner.coef.lower[[ii]][(basis.index[hh]+1):(basis.index[hh]+basis.index[hh+1])]
                 }
             }
 
@@ -1421,6 +1422,7 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
              obs_at_upper <- list()
              for (ii in 1:length(par.names)){
                obs_at_upper[[ii]]     <- matrix(NA, nrow = length(time), ncol = length(state.names))
+               colnames(obs_at_upper[[ii]]) <- state.names
                for (jj in 1:length(state.names)){
                  obs_at_upper[[ii]][,state.names[jj]] <- inner.input[[jj]][[2]] %*% coef.upper[[ii]][[state.names[jj]]]
                }
@@ -1428,6 +1430,7 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
              obs_at_lower <- list()
              for (ii in 1:length(par.names)){
                obs_at_lower[[ii]]     <- matrix(NA, nrow = length(time), ncol = length(state.names))
+               colnames(obs_at_lower[[ii]]) <- state.names
                for (jj in 1:length(state.names)){
                  obs_at_lower[[ii]][,state.names[jj]] <- inner.input[[jj]][[2]] %*% coef.lower[[ii]][[state.names[jj]]]
                }
@@ -1440,14 +1443,14 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
             for (par.index in 1:length(par.names)){
 
               for(time.index in 1:length(time)){
-                  a <- (data[time[time.index],state.names[state.index]] + y_stepsize -
-                        obs_at_upper[[par.index]][time[time.index],state.names[state.index]])^2
-                  b <- (data[time[time.index],state.names[state.index]] - y_stepsize -
-                        obs_at_upper[[par.index]][time[time.index],state.names[state.index]])^2
-                  c <- (data[time[time.index],state.names[state.index]] + y_stepsize -
-                        obs_at_lower[[par.index]][time[time.index],state.names[state.index]])^2
-                  d <- (data[time[time.index],state.names[state.index]] - y_stepsize -
-                        obs_at_lower[[par.index]][time[time.index],state.names[state.index]])^2
+                  a <- (data[time.index,state.names[state.index]] + y_stepsize -
+                        obs_at_upper[[par.index]][time.index,state.names[state.index]])^2
+                  b <- (data[time.index,state.names[state.index]] - y_stepsize -
+                        obs_at_upper[[par.index]][time.index,state.names[state.index]])^2
+                  c <- (data[time.index,state.names[state.index]] + y_stepsize -
+                        obs_at_lower[[par.index]][time.index,state.names[state.index]])^2
+                  d <- (data[time.index,state.names[state.index]] - y_stepsize -
+                        obs_at_lower[[par.index]][time.index,state.names[state.index]])^2
                   H_deriv_wrt_y[[state.index]][time.index, par.index]  <- (a-b-c+d)/(4 * stepsize * y_stepsize)
 
               }
@@ -1455,21 +1458,22 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
             }
           }
           #
-          second_H <- do.call(H_deriv_wrt_y,rbind)
-          dtheta_dy <- -solve(d_H2_theta2) %*% second_H
 
-          par.var <- rep(NA, length(par.names))
-          for (jj in 1:length(par.names)){
-              temp     <- dtheta_dy[,jj]
-              temp.mat <- matrix(dtheta_dy, ncol = length(state.names), byrow = FALSE)
+          second_H  <- do.call(rbind,H_deriv_wrt_y)   #
+          dtheta_dy <- t(-solve(d_H2_theta2) %*% t(second_H))
 
-              par.var[jj] <-  t(temp.mat) %*%  (temp.mat %*% var(data))
+          var.vec   <- rep(NA, length(state.names))
+          for (jj in 1:length(state.names)){
+            var.vec[jj] <- var(data[,state.names[jj]])
           }
+          var.rep   <- rep(var.vec,each=length(time))
+          Sigma.mat <- diag(var.rep)
 
-          names(par.var) <- par.names
+          par.var <- t(dtheta_dy) %*% Sigma.mat %*% dtheta_dy
+
+          rownames(par.var) <- colnames(par.var) <- par.names
 
       }
-
 
      return(par.var)
 }
