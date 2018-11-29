@@ -1238,7 +1238,7 @@ return(boots.var)
 #' @param
 #'
 #' @return
-numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,stepsize,y_stepsize,controls = NULL,){
+numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,stepsize,y_stepsize,controls = NULL){
       #
       if (nrow(data) > ncol(data)){
         colnames(data) <- state.names
@@ -1257,7 +1257,7 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
       struc.res <- result$structural.par
       names(struc.res) <- par.names
       nuis.res  <- result$nuissance.par
-      if (length(state.names == 1)){
+      if (length(state.names) == 1){
             basis.eval.list <- prepare_basis(basis.list, times = time, nquadpts = con.now$nquadpts)
             inner.input <- list(data, basis.eval.list$Phi.mat, lambda, basis.eval.list$Qmat, basis.eval.list$Q.D1mat,
                                 basis.eval.list$quadts,basis.eval.list$quadwts,time, state.names,par.names)
@@ -1358,8 +1358,8 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
                     par.a[c(par.index,(ii+1))] <- struc.res[c(par.index,(ii+1))] + stepsize
                     par.b[par.index] <- struc.res[par.index] + stepsize
                     par.b[ii+1]      <- struc.res[ii] - stepsize
-                    par.b[par.index] <- struc.res[par.index] - stepsize
-                    par.b[ii+1]      <- struc.res[ii] + stepsize
+                    par.c[par.index] <- struc.res[par.index] - stepsize
+                    par.c[ii+1]      <- struc.res[ii] + stepsize
                     par.d[c(par.index,(ii+1))] <- struc.res[c(par.index,(ii+1))] - stepsize
                     eval.a = outterobj_multi_nls(ode.parameter = par.a,
                                             basis.initial = nuis.res, derivative.model = ode.model,
