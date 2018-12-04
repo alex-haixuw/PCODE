@@ -1246,6 +1246,13 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
       }else{
         rownames(data) <- statenames
       }
+
+      if(length(stepsize) == 1){
+          stepsize <- rep(stepsize, length(par.names))
+      }
+      names(stepsize) <- par.names
+
+
       #Set up default controls for optimizations and quadrature evaluation
       con.default <- list(nquadpts = 101, smooth.lambda = 1e2, tau = 0.01, tolx = 1e-6,tolg = 1e-6, maxeval = 20)
       #Replace default with user's input
@@ -1355,19 +1362,19 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
                                               basis.initial = nuis.res, derivative.model = ode.model, inner.input = inner.input, NLS = FALSE)
 
                 d_H2_theta2[par.index,par.index] <- (upper.eval[par.index] - 2 * center.eval[par.index] +
-                                                     lower.eval[par.index])/(stepsize^2)
+                                                     lower.eval[par.index])/(stepsize[par.index]^2)
             }
 
 
             for ( par.index in 1:(length(par.names)-1)){
                 for (ii in par.index:(length(par.names)-1)){
                     par.a <- par.b <- par.c <- par.d <- struc.res
-                    par.a[c(par.index,(ii+1))] <- struc.res[c(par.index,(ii+1))] + stepsize
-                    par.b[par.index] <- struc.res[par.index] + stepsize
-                    par.b[ii+1]      <- struc.res[ii] - stepsize
-                    par.c[par.index] <- struc.res[par.index] - stepsize
-                    par.c[ii+1]      <- struc.res[ii] + stepsize
-                    par.d[c(par.index,(ii+1))] <- struc.res[c(par.index,(ii+1))] - stepsize
+                    par.a[c(par.index,(ii+1))] <- struc.res[c(par.index,(ii+1))] + stepsize[c(par.index,(ii+1))]
+                    par.b[par.index] <- struc.res[par.index] + stepsize[par.index]
+                    par.b[ii+1]      <- struc.res[ii+1] - stepsize[ii+1]
+                    par.c[par.index] <- struc.res[par.index] - stepsize[par.index]
+                    par.c[ii+1]      <- struc.res[ii+1] + stepsize[ii+1]
+                    par.d[c(par.index,(ii+1))] <- struc.res[c(par.index,(ii+1))] - stepsize[c(par.index,(ii+1))]
                     eval.a = outterobj_multi_nls(ode.parameter = par.a,
                                             basis.initial = nuis.res, derivative.model = ode.model,
                                             inner.input = inner.input, NLS = FALSE)
@@ -1380,7 +1387,7 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
                     eval.d = outterobj_multi_nls(ode.parameter = par.d,
                                             basis.initial = nuis.res, derivative.model = ode.model,
                                             inner.input = inner.input, NLS = FALSE)
-                    d_H2_theta2[par.index, ii+1] <- (eval.a-eval.b-eval.c+eval.d)/(4 * stepsize * stepsize)
+                    d_H2_theta2[par.index, ii+1] <- (eval.a-eval.b-eval.c+eval.d)/(4 * stepsize[par.index] * stepsize[ii+1])
                 }
             }
             d_H2_theta2[lower.tri(d_H2_theta2)] <- t(d_H2_theta2)[lower.tri(d_H2_theta2)]
@@ -1395,8 +1402,8 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
             for (par.index in 1:length(par.names)){
                 par.moveup    <- struc.res
                 par.movedown  <- struc.res
-                par.moveup[par.names[par.index]]      <-  struc.res[par.names[par.index]] + stepsize
-                par.movedown[par.names[par.index]]    <-  struc.res[par.names[par.index]] - stepsize
+                par.moveup[par.names[par.index]]      <-  struc.res[par.names[par.index]] + stepsize[par.names[par.index]]
+                par.movedown[par.names[par.index]]    <-  struc.res[par.names[par.index]] - stepsize[par.names[par.index]]
 
                 inner.coef.upper[[par.index]] <- nls_optimize.inner(innerobj_multi, nuis.res,
                                                  ode.par = par.moveup, derive.model = ode.model,
@@ -1458,7 +1465,7 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
                         obs_at_lower[[par.index]][time.index,state.names[state.index]])^2
                   d <- (data[time.index,state.names[state.index]] - y_stepsize -
                         obs_at_lower[[par.index]][time.index,state.names[state.index]])^2
-                  H_deriv_wrt_y[[state.index]][time.index, par.index]  <- (a-b-c+d)/(4 * stepsize * y_stepsize)
+                  H_deriv_wrt_y[[state.index]][time.index, par.index]  <- (a-b-c+d)/(4 * stepsize[par.index] * y_stepsize)
 
               }
 
