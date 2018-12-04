@@ -258,7 +258,8 @@ innerobj_multi  <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
 outterobj_multi_nls <- function(ode.parameter, basis.initial, derivative.model, inner.input,NLS=TRUE){
   #Convergence of basis coefficients seems to happen before 'maxeval'.
 
-  inner_coef <- nls_optimize.inner(innerobj_multi, basis.initial, ode.par = ode.parameter, derive.model = derivative.model, options = list(maxeval = 50,tolx=1e-6,tolg=1e-6), input = inner.input,verbal=2)$par
+  inner_coef <- nls_optimize.inner(innerobj_multi, basis.initial, ode.par = ode.parameter, derive.model = derivative.model,
+                                   options = list(maxeval = 50,tolx=1e-6,tolg=1e-6), input = inner.input,verbal=2)$par
   ndim     <- length(inner.input)
   npoints  <- length(inner.input[[1]][[8]])
   basisnumber   <- rep(NA, ndim+1)
@@ -569,7 +570,7 @@ nls_optimize <- function (fun, x0, options = list(), ...,verbal=1){
 
 nls_optimize.inner <- function (fun, x0, options = list(), ...,verbal=FALSE){
     stopifnot(is.numeric(x0))
-    opts <- list(tau = 0.001, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
+    opts <- list(tau = 0.001, tolx = 1e-06, tolg = 1e-06, maxeval = 30)
     namedOpts <- match.arg(names(options), choices = names(opts),
         several.ok = TRUE)
     if (!is.null(names(options)))
