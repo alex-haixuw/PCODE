@@ -1247,20 +1247,12 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
         rownames(data) <- statenames
       }
 
-      if(length(stepsize) == 1){
-          stepsize <- rep(stepsize, length(par.names))
-      }
-      names(stepsize) <- par.names
-
 
       #Set up default controls for optimizations and quadrature evaluation
       con.default <- list(nquadpts = 101, smooth.lambda = 1e2, tau = 0.01, tolx = 1e-6,tolg = 1e-6, maxeval = 20)
       #Replace default with user's input
       con.default[(namc <- names(controls))] <- controls
       con.now  <- con.default
-
-      #
-      if (length(stepsize))
 
 
 
@@ -1313,7 +1305,10 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
 
       #Multiple dimension and parameters
       }else{
-
+            if(length(stepsize) == 1){
+                stepsize <- rep(stepsize, length(par.names))
+            }
+            names(stepsize) <- par.names
             #evaluation of basis objects for each dimension over time points and quadrature points for further use
             basis.eval.list <- lapply(basis.list, prepare_basis, times = time, nquadpts = con.now$nquadpts)
             #Sort nuissance parameters into each dimension
@@ -1352,8 +1347,8 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
                 #Adding or subtrating stepsize
                 par.moveup    <- struc.res
                 par.movedown  <- struc.res
-                par.moveup[par.names[par.index]]      <-  struc.res[par.names[par.index]] + stepsize
-                par.movedown[par.names[par.index]]    <-  struc.res[par.names[par.index]] - stepsize
+                par.moveup[par.names[par.index]]      <-  struc.res[par.names[par.index]] + stepsize[par.names[par.index]]
+                par.movedown[par.names[par.index]]    <-  struc.res[par.names[par.index]] - stepsize[par.names[par.index]]
 
                 upper.eval[par.index]  <- outterobj_multi_nls(ode.parameter = par.moveup,
                                               basis.initial = nuis.res, derivative.model = ode.model, inner.input = inner.input, NLS = FALSE)
