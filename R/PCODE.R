@@ -1250,6 +1250,12 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
       #Replace default with user's input
       con.default[(namc <- names(controls))] <- controls
       con.now  <- con.default
+
+      #
+      if (length(stepsize))
+
+
+
       #Initial run
       result <- PC_ODE(data, time, ode.model,par.names,state.names, likelihood.fun,
                        par.initial, basis.list, lambda = lambda,controls = con.now)
