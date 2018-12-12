@@ -1473,7 +1473,7 @@ numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.f
 
           var.vec   <- rep(NA, length(state.names))
           for (jj in 1:length(state.names)){
-            var.vec[jj] <- var(data[,state.names[jj]])
+            var.vec[jj] <- var(state.residual[,jj])
           }
           var.rep   <- rep(var.vec,each=length(time))
           Sigma.mat <- diag(var.rep)
