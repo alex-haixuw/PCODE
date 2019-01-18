@@ -77,7 +77,7 @@ PC_ODE <- function(data, time, ode.model,par.names,state.names, likelihood.fun =
 
       if(length(state.names) == 1){
            if (!is.function(likelihood.fun)){
-             result <- PC_ODE_1d(data = data, time = time, ode.model = ode.model, par.initial = par.initial,
+             result <- PC_ODE_1d(data = data, time = time, ode.model = ode.model, par.initial = par.initial,par.names=par.names,
                                  basis = basis.list, lambda = lambda, controls = con.now)
              return(list(structural.par = result$structural.par, nuissance.par = result$nuissance.par))
            }else{
@@ -326,13 +326,10 @@ innerobj <- function(basis_coef, ode.par, input, derive.model,NLS=TRUE){
   rightside <- rep(NA, length(quadwts))
 
   tempfun <- function(x, temp = ode.par){
-    return(derive.model(state = c(X=x), parameters= c(theta = temp)))
+    return(derive.model(state = c(X=x), parameters=temp))
   }
   rightside <- unlist(lapply(Xt,tempfun))
-
-  #for (jj in 1:length(quadwts)){
-  #      rightside[jj] <- derive.model(state = c(X = Xt[jj]),parameters = c(theta = #ode.par))
-  #}
+  
 
   penalty_residual <- sqrt(lambda) * sqrt(quadwts) * (dXdt - rightside)
 
@@ -398,7 +395,7 @@ outterobj <- function(ode.parameter, basis.initial, derivative.model, inner.inpu
 #'
 #' @return   \item{structural.par}{The structural parameters of the ODE model.}
 #' @return    \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
-PC_ODE_1d <- function(data, time, ode.model, par.initial, basis,lambda = NULL, controls = NULL){
+PC_ODE_1d <- function(data, time, ode.model, par.initial,par.names, basis,lambda = NULL, controls = NULL){
 
     #number of parameters
     npar  <- length(par.initial)
@@ -443,7 +440,7 @@ PC_ODE_1d <- function(data, time, ode.model, par.initial, basis,lambda = NULL, c
       #temp <- nls_optimize(innerobj, initial_coef, ode.par = par.initial, derive.model = ode.model, input = inner.input,NLS = TRUE)
       #new.ini.basiscoef <- matrix(temp$par,length(temp$par),1)
       #--------------------------------------------------------
-
+      names(par.initial) <- par.names
       theta.final  <- nls_optimize(outterobj, par.initial,basis.initial = initial_coef, derivative.model = ode.model,inner.input = inner.input,NLS=TRUE,verbal = 1)$par
 
       basiscoef <- nls_optimize.inner(innerobj, initial_coef, ode.par = theta.final, derive.model = ode.model, input = inner.input,NLS = TRUE)$par
@@ -1126,13 +1123,14 @@ myCount <- function(...) {length(match.call())}
 #' @return
 
 bootsvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,bootsrep,controls = NULL){
-    #
+  if (length(state.names) >=2){
     if (nrow(data) > ncol(data)){
       colnames(data) <- state.names
     }else{
       rownames(data) <- statenames
     }
-
+  }
+  
 
      #Initial run
      result.ini <- PC_ODE(data, time, ode.model,par.names,state.names, likelihood.fun,
@@ -1191,11 +1189,9 @@ bootsvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun
          coef.list[[jj]]      <- nuipar.ini[(basis.index[jj]+1):(basis.index[jj]+basis.index[jj+1])]
          phi.ini              <- eval.basis(time, basis.list[[jj]])
          state.est[,jj]       <- phi.ini %*% coef.list[[jj]]
-         if (nrow(data) > ncol(data)){
-           residual             <- (data[,state.names[jj]] - state.est[,state.names[jj]])
-         }else{
-           residual             <- (data[state.names[jj],] - state.est[,state.names[jj]])
-         }
+         residual             <- (data[,state.names[jj]] - state.est[,state.names[jj]])
+         
+        
          var.est[jj]          <- var(residual)
        }
 
