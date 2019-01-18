@@ -1240,11 +1240,12 @@ return(boots.var)
 #'
 #' @return
 numericvar <- function(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,stepsize,y_stepsize,controls = NULL){
-      #
-      if (nrow(data) > ncol(data)){
-        colnames(data) <- state.names
-      }else{
-        rownames(data) <- statenames
+      if (length(state.names) >=2){
+        if (nrow(data) > ncol(data)){
+          colnames(data) <- state.names
+        }else{
+          rownames(data) <- statenames
+        }
       }
 
 
