@@ -2,7 +2,7 @@
 % Please edit documentation in R/PCODE.R
 \name{outterobj_lkh_1d}
 \alias{outterobj_lkh_1d}
-\title{Outter objective function (likelihood and Single dimension version)}
+\title{Outter objective function (likelihood and single dimension version)}
 \usage{
 outterobj_lkh_1d(ode.parameter, basis.initial, derivative.model, likelihood.fun, inner.input)
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/PCODE.R
 \name{cv_lambda}
 \alias{cv_lambda}
-\title{Cross-validation for sparsity parameter lambda}
+\title{Find optimial penalty parameter lambda by cross-validation.}
 \usage{
 cv_lambda(data, time, ode.model, par.names, state.names, \cr        par.initial, basis.list,lambda,lambda_grid,cv_points,controls)
 }
@@ -32,8 +32,8 @@ cv_lambda(data, time, ode.model, par.names, state.names, \cr        par.initial,
 \value{
 \item{lambda_grid}{The original input vector of a search grid for the optimal lambda.}
 
-\item{cv.score}{The vector contains the cross validation score for each lambda}
+\item{cv.score}{The matrix contains the cross validation score for each lambda of each replication}
 }
 \description{
-Obtain the optimal sparsity parameter given a search grid based on cross validation score.
+Obtain the optimal sparsity parameter given a search grid based on cross validation score with replications.
 }

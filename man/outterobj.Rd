@@ -2,7 +2,7 @@
 % Please edit documentation in R/PCODE.R
 \name{outterobj}
 \alias{outterobj}
-\title{Outter objective function}
+\title{Outter objective function (Single dimension version)}
 \usage{
 outterobj_multi_nls(ode.parameter, basis.initial, derivative.model, inner.input, NLS)
 }

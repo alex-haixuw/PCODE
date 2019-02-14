@@ -2,7 +2,7 @@
 % Please edit documentation in R/PCODE.R
 \name{innerobj}
 \alias{innerobj}
-\title{Inner objective function}
+\title{Inner objective function (Single dimension version)}
 \usage{
 innerobj_multi(basis_coef, ode.par, input, derive.model,NLS)
 }

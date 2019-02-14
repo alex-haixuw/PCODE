@@ -17,13 +17,15 @@ PC_ODE(data, time, ode.model, par.names, state.names, \cr        par.initial, ba
 
 \item{state.names}{The names of state variables defined in the 'ode.model'.}
 
+\item{likelihood.fun}{A likelihood function passed to PCODE in case of that the error termsdevtools::document()do not have a Normal distribution.}
+
 \item{par.initial}{Initial value of structural parameters to be optimized.}
 
 \item{basis.list}{A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.}
 
 \item{lambda}{Penalty parameter.}
 
-\item{controls}{A list of control parameters. See ‘Details’.}
+\item{controls}{A list of control parameters. See Details.}
 }
 \value{
 \item{structural.par}{The structural parameters of the ODE model.}
@@ -34,7 +36,7 @@ PC_ODE(data, time, ode.model, par.names, state.names, \cr        par.initial, ba
 Obtain estiamtes of both structural and nuissance parameters of an ODE model by parameter cascade method.
 }
 \details{
-The \code{controls} argument is a list providing addition inputs for the nonlinear least square optimizer:
+The \code{controls} argument is a list providing addition inputs for the nonlinear least square optimizer or general optimizer \code{optim}:
 \itemize{
 \item \code{nquadpts} Determine the number of quadrature points for approximating an integral. Default is 101.
 \item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuissance parameters.
@@ -47,23 +49,70 @@ The \code{controls} argument is a list providing addition inputs for the nonline
 \examples{
 require(FDA)
 require(deSolve)
+#Simple ode model example
+#define model parameters
+model.par   <- c(theta = c(0.1))
+#define state initial value
+state       <- c(X     = 0.1)
+#define the ode model for obtaining ode solutions
+ode.model <- function(t, state,parameters){
+ with(as.list(c(state,parameters)),
+      {
+        dX <- theta*X*(1-X/10)
+        return(list(dX))
+      })
+}
 
+#Observation points
+times <- seq(0,100,length.out=101)
+#Solve the ode model
+desolve.mod <- ode(y=state,times=times,func=ode.model,parms = model.par)
+#Simulate data
+nobs  <- length(times)
+scale <- 0.5
+noise <- scale*rnorm(n = nobs, mean = 0 , sd = 1)
+observ <- desolve.mod[,2] + noise
+
+Dmodel <- function(state,parameters){
+with(as.list(c(state,parameters)),
+    {
+      dX <- theta*X*(1-X/10)
+      return(list(dX))
+    })
+}
+#Generating basis functions for interpolating observations
+#knots located at each observation time point
+knots <- seq(0,100,length.out=21)
+#order of basis functions
+norder <- 5
+#number of basis funtions
+nbasis <- length(knots) + norder - 2
+#creating basis
+basis  <- create.bspline.basis(c(0,100),nbasis,norder,breaks = knots)
+
+pcode.result <- PC_ODE(data = observ, time = times, ode.model = Dmodel, par.initial = 0.3,
+                     par.names = 'theta',state.names = 'X',basis.list = basis, lambda = 1e2)
+
+#Multiple dimension example
 #Define the FitzHugh-Nagumo model
 model.par   <- c(a=0.2,b=0.2,c=3)
 state       <- c(V=-1,R=1)
-Dmodel <- function(state,parameters){
+ode.model <- function(t,state,parameters){
 with(as.list(c(state,parameters)),
   {
      dV <- c*(V - (V^3)/3 + R)
      dR <- -(1/c) * (V - a + b*R)
      return(list(c(dV,dR)))
    })}
+
 #Observation points
 times <- seq(0,20,length.out=11)
 #Generate ODE observations
 desolve.mod <- ode(y=state,times=times,func=ode.model,parms = model.par)
 
+#Number of observations
 nobs  <- length(times)
+#standard deviation of noise
 scale <- 0.1
 noise <- scale*rnorm(n = nobs, mean = 0 , sd = 1)
 #Add some noises to data
@@ -73,6 +122,7 @@ observ[,2] <- desolve.mod[,2] + noise
 observ[,3] <- desolve.mod[,3] + noise
 
 #Define basis for each dimension
+#In this case, the same basis is used for both V(t) and R(t)
 knots <- seq(0,20,length.out=11)
 #order of basis functions
 norder <- 4
@@ -82,6 +132,14 @@ nbasis <- length(knots) + norder - 2
 basis <- create.bspline.basis(c(0,20),nbasis,norder,breaks = knots)
 basis.list <- list(basis,basis)
 
+#Define the ode model for parameter cascade method
+Dmodel <- function(state,parameters){
+with(as.list(c(state,parameters)),
+  {
+     dV <- c*(V - (V^3)/3 + R)
+     dR <- -(1/c) * (V - a + b*R)
+     return(list(c(dV,dR)))
+   })}
 pcode.result <- PC_ODE(data = observ[,2:3], time= observ[,1], ode.model = Dmodel, par.names = c('a','b','c'),
                       state.names = c('V','R'), par.initial = rnorm(3),lambda = 1e2,basis.list = basis.list,
                       controls = list(smooth.lambda = 1e2,verbal = 1,maxeval = 200))

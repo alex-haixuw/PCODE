@@ -11,7 +11,7 @@ prepare_basis(basis, times, nquadpts)
 
 \item{times}{The vector contain observation times for corresponding dimension.}
 
-\item{nquadpts}{Number of quadrature points will be used later for approximating integrals}
+\item{nquadpts}{Number of quadrature points will be used later for approximating integrals.}
 }
 \value{
 \item{Phi.mat}{Evaluations of all basis functions stored as columns in the matrix.}
