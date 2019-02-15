@@ -2,13 +2,12 @@ Package: PCODE
 Type: Package
 Title: Estimation of an ODE model by parameter cascade method.
 Version: 1.0.1
+Imports: fda,
+         pracma,
+         MASS
 Author: Haixu Wang
 Maintainer: Haixu Wang <haixuw@sfu.ca>
-Description: This package offers several functions for estimating an ODE model 
-    based on the   parameter cascade method (Ramsay et. al 2007).It includes a 
-    main function to perform parameter estimation, a nonlinear least square optimizer, 
-    and a tuning function for finding the optimal sparsity parameter.
+Description: An implementation of the parameter cascade method for estimating ODE models with missing or complete observations. It combines smoothing method and profile estimation to estimate any non-linear dynamic system. The package also offers variance estimates for parameters of interest based on either bootstrap or Delta method. 
 License:MIT License Copyright (c) [2018] 
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 6.0.1
