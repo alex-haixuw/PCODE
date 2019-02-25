@@ -214,23 +214,23 @@ PC_ODE <- function(data, time, ode.model, par.names, state.names, likelihood.fun
 prepare_basis <- function(basis, times, nquadpts) {
 
     # Evaluate basis functions over observation time points
-    Phi.mat <- eval.basis(times, basis)
+    Phi.mat  <- eval.basis(times, basis)
 
     # Preparation to calculate L2 penalty Evaluate basis function over quadrature points, and the number of quadrature
     # points, 'nquadpts', defined the density of points.
-    quadts <- seq(min(times), max(times), length.out = nquadpts)
-    nquad <- length(quadts)
-    quadwts <- rep(1, nquad)
+    quadts   <- seq(min(times), max(times), length.out = nquadpts)
+    nquad    <- length(quadts)
+    quadwts  <- rep(1, nquad)
     even.ind <- seq(2, (nquad - 1), by = 2)
-    odd.ind <- seq(3, (nquad - 2), by = 2)
+    odd.ind  <- seq(3, (nquad - 2), by = 2)
     quadwts[even.ind] = 4
     quadwts[odd.ind] = 2
-    h <- quadts[2] - quadts[1]
-    quadwts <- quadwts * (h/3)
+    h        <- quadts[2] - quadts[1]
+    quadwts  <- quadwts * (h/3)
 
-    Qmat <- eval.basis(quadts, basis)
-    Q.D1mat <- eval.basis(quadts, basis, 1)
-    Q.D2mat <- eval.basis(quadts, basis, 2)
+    Qmat     <- eval.basis(quadts, basis)
+    Q.D1mat  <- eval.basis(quadts, basis, 1)
+    Q.D2mat  <- eval.basis(quadts, basis, 2)
 
     return(list(Phi.mat = Phi.mat, Qmat = Qmat, Q.D1mat = Q.D1mat, Q.D2mat = Q.D2mat, quadts = quadts, quadwts = quadwts))
 
@@ -1532,7 +1532,34 @@ numericvar <- function(data, time, ode.model, par.names, state.names, likelihood
     return(par.var)
 }
 
-
+#' @title Parameter Cascade Method for Ordinary Differential Equation Models with missing state variable
+#' @description Obtain estiamtes of both structural and nuissance parameters of an ODE model by parameter cascade method when the dynamics are partially observed.
+#' @usage PC_ODE_missing(data, time, ode.model, par.names, state.names, \cr        par.initial, basis.list,lambda,controls)
+#' @param        data A data frame or a matrix contain observations from each dimension of the ODE model.
+#' @param         time A vector contain observation times or a matrix if time points are different between dimensions.
+#' @param    ode.model An R function that computes the time derivative of the ODE model given observations of states variable and structural parameters.
+#' @param    par.names The names of structural parameters defined in the 'ode.model'.
+#' @param  state.names The names of state variables defined in the 'ode.model'.
+#' @param  par.initial Initial value of structural parameters to be optimized.
+#' @param likelihood.fun A likelihood function passed to PCODE in case of that the error termsdevtools::document()do not have a Normal distribution.
+#' @param   basis.list A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.
+#' @param    lambda Penalty parameter.
+#' @param     controls A list of control parameters. See Details.
+#'
+#' @details The \code{controls} argument is a list providing addition inputs for the nonlinear least square optimizer or general optimizer \code{optim}:
+#' \itemize{
+#'\item \code{nquadpts} Determine the number of quadrature points for approximating an integral. Default is 101.
+#'\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuissance parameters.
+#'\item \code{tau} Initial value of Marquardt parameter. Small values indicate good initial values for structural parameters.
+#'\item \code{tolx} Tolerance for parameters of objective functions. Default is set at 1e-6.
+#'\item \code{tolg} Tolerance for the gradient of parameters of objective functions. Default is set at 1e-6.
+#'\item \code{maxeval} The maximum number of evaluation of the optimizer. Default is set at 20.
+#'}
+#'
+#'
+#' @return   \item{structural.par}{The structural parameters of the ODE model.}
+#'
+#' @return    \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
 PC_ODE_missing <- function(data,time, ode.model,par.names, state.names, likelihood.fun,
                            par.initial, basis.list, lambda, controls){
 
@@ -1594,7 +1621,17 @@ PC_ODE_missing <- function(data,time, ode.model,par.names, state.names, likeliho
 }
 
 
-
+#' @title Outter objective function (multiple dimension version with unobserved state variables)
+#' @description An objective function of the structural parameter computes the measure of fit for the basis expansion.
+#' @usage outterobj_multi_nls(ode.parameter, basis.initial, derivative.model, inner.input, NLS)
+#' @param ode.parameter Structural parameters of the ODE model.
+#' @param basis.initial Initial values of the basis coefficients for nonlinear least square optimization.
+#' @param derivative.model The function defines the ODE model and is the same as the ode.model in 'PC_ODE'
+#' @param inner.input Input that will be passed to the inner objective function. Contains dependencies for the optimization, including observations, penalty parameter lambda, and etc..
+#' @param NLS Default is \code{TRUE} so the function returns vector of residuals, and otherwise returns sum of squared errors.
+#'
+#' @return   \item{residual}{Vector of residuals and evaluation of penalty function on quadrature points for approximating the integral.}
+#'
 outterobj_multi_missing <- function(ode.parameter, basis.initial, derivative.model, inner.input, NLS = TRUE) {
   # Convergence of basis coefficients seems to happen before 'maxeval'.
 
@@ -1625,7 +1662,16 @@ outterobj_multi_missing <- function(ode.parameter, basis.initial, derivative.mod
 
 }
 
-
+#' @title Inner objective function (multiple dimension version with unobserved state variables)
+#' @description An objective function combines the sum of squared error of basis expansion estimates and the penalty controls how those estimates fail to satisfies the ODE model
+#' @usage innerobj_multi(basis_coef, ode.par, input, derive.model,NLS)
+#' @param basis_coef Basis coefficients for interpolating observations given a basis object.
+#' @param ode.par Structural parameters of the ODE model.
+#' @param input Contains dependencies for the optimization, including observations, penalty parameter lambda, and etc..
+#' @param derive.model The function defines the ODE model and is the same as the ode.model in 'PC_ODE'
+#' @param NLS Default is \code{TRUE} so the function returns vector of residuals, and otherwise returns sum of squared errors.
+#'
+#' @return   \item{residual.vec}{Vector of residuals and evaluation of penalty function on quadrature points for approximating the integral.}
 innerobj_multi_missing <- function(basis_coef, ode.par, input, derive.model, NLS = TRUE) {
 
   # Retrieve variables from 'input' get the dimesion of the ODE model
@@ -1681,6 +1727,3 @@ innerobj_multi_missing <- function(basis_coef, ode.par, input, derive.model, NLS
   }
 
 }
-
-
-
