@@ -783,7 +783,7 @@ tunelambda <- function(data, time, ode.model, par.names, state.names, par.initia
             }
 
             # simulate a dynamic system based on initial value and structural parameters
-            sim.res <- ode(y = initial.val, times = sort(time.keep), func = ode.model, parms = par.res)
+            sim.res <- ode(y = initial.val, times = sort(time.index.keep), func = ode.model, parms = par.res)
             residuals <- sim.res[, state.names] - data.keep
             if (length(state.names) == 1) {
                 cv.score[jj, kk] <- mean(residuals^2)
