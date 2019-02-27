@@ -145,7 +145,7 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
         }
     }else {
 
-      if(length(state.names) != length(colnames(data))){
+      if(length(state.names) != ncol(data)){
               result <- pcode_missing(data = data, time = time, ode.model = ode.model,
                                        par.names = par.names, state.names = state.names, likelihood.fun = likelihood.fun,
                                        par.initial = par.initial , basis.list = basis.list, lambda = lambda, controls = con.now)
@@ -743,18 +743,18 @@ tunelambda <- function(data, time, ode.model, par.names, state.names, par.initia
             }
 
             # Keep some observations for cross validation: Identifying time points
-            time.keep <- points.keep
+            time.index.keep <- which(time %in% as.vector(points.keep))
             # Seperate data into two parts
-            if (length(state.names == 1)) {
-                data.keep <- data[time.keep]
-                data.fit <- data[-time.keep]
+            if (length(state.names) == 1) {
+                data.keep <- data[time.index.keep]
+                data.fit <- data[-time.index.keep]
             } else {
-                data.keep <- data[time.keep, ]
-                data.fit <- data[-time.keep, ]
+                data.keep <- data[time.index.keep, ]
+                data.fit <- data[-time.index.keep, ]
             }
 
             print(paste("Running on lambda = ", lambda_grid[jj], " for iteration ", kk, sep = ""))
-            pcode.result <- pcode(data = data.fit, time = time[-time.keep], ode.model = ode.model, par.names = par.names,
+            pcode.result <- pcode(data = data.fit, time = time[-time.index.keep], ode.model = ode.model, par.names = par.names,
                 state.names = state.names, basis.list = basis.list, par.initial = par.initial, lambda = lambda_grid[jj],
                 controls = controls)
             #
@@ -796,7 +796,7 @@ tunelambda <- function(data, time, ode.model, par.names, state.names, par.initia
         }
     }
 
-    mean_cv <- apply(cv.score, 1, mean)
+  
 
     return(list(cv.score = cv.score, lambda_grid = lambda_grid, cv.plot = cv.plot))
 }
