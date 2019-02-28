@@ -1243,8 +1243,6 @@ bootsvar <- function(data, time, ode.model, par.names, state.names, likelihood.f
             phi.ini <- eval.basis(time, basis.list[[jj]])
             state.est[, jj] <- phi.ini %*% coef.list[[jj]]
             residual <- (data[, state.names[jj]] - state.est[, state.names[jj]])
-
-
             var.est[jj] <- var(residual)
         }
 
