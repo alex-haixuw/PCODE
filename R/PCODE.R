@@ -1181,7 +1181,7 @@ bootsvar <- function(data, time, ode.model, par.names, state.names, likelihood.f
         if (nrow(data) > ncol(data)) {
             colnames(data) <- state.names
         } else {
-            rownames(data) <- statenames
+            rownames(data) <- state.names
         }
     }
 
@@ -1257,12 +1257,13 @@ bootsvar <- function(data, time, ode.model, par.names, state.names, likelihood.f
             return(ode.model(state = state, parameters = parameters))
         }
         base.est <- ode(y = state.est[1, ], times = time, func = tempmodel, parms = result.ini$structural.par)[, -1]
-        data.boot <- matrix(NA,nrow = length(state.est),ncol = length(state.names))
+        
         for (iter in 1:bootsrep) {
+            data.boot <- matrix(NA,nrow = length(time),ncol = length(state.names))
             print(paste("Running on bootstrap iteration: ", iter, sep = ""))
             # data.boot <- state.est + rnorm(length(state.est),mean = 0 , sd = sqrt(var.est))
             for (jj in 1:length(state.names)){
-              data.boot[,jj] <- base.est[,jj] + rnorm(length(state.est), mean = 0, sd = sqrt(var.est[jj]))
+              data.boot[,jj] <- base.est[,jj] + rnorm(length(time), mean = 0, sd = sqrt(var.est[jj]))
             }
             result <- pcode(data = data.boot, time = time, ode.model = ode.model, par.names = par.names, state.names = state.names,
                 par.initial = temp.initial, basis.list = basis.list, lambda = lambda, controls = controls)
