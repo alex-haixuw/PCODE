@@ -15,7 +15,7 @@ innerobj_lkh_1d(basis_coef, ode.par, input, derive.model, likelihood.fun)
 
 \item{likelihood.fun}{The likelihood or loglikelihood function of the errors.}
 
-\item{derivde.model}{The function defines the ODE model and is the same as the ode.model in 'PC_ODE'.}
+\item{derivde.model}{The function defines the ODE model and is the same as the ode.model in 'pcode'.}
 }
 \value{
 obj.eval The evaluation of the inner objective function.

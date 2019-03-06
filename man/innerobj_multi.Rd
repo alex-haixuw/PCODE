@@ -13,7 +13,7 @@ innerobj_multi(basis_coef, ode.par, input, derive.model,NLS)
 
 \item{input}{Contains dependencies for the optimization, including observations, penalty parameter lambda, and etc..}
 
-\item{derive.model}{The function defines the ODE model and is the same as the ode.model in 'PC_ODE'}
+\item{derive.model}{The function defines the ODE model and is the same as the ode.model in 'pcode'}
 
 \item{NLS}{Default is \code{TRUE} so the function returns vector of residuals, and otherwise returns sum of squared errors.}
 }

@@ -27,7 +27,7 @@ bootsvar(data, time, ode.model,par.names,state.names, likelihood.fun = NULL,\cr 
 
 \item{bootsrep}{Bootstrap sample to be used for estimating variance.}
 
-\item{controls}{A list of control parameters. Same as the controls in \code{PC_ODE}.}
+\item{controls}{A list of control parameters. Same as the controls in \code{pcode}.}
 }
 \value{
 boots.var The bootstrap variance of each structural parameters.

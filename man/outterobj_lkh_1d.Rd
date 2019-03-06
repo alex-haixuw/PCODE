@@ -11,7 +11,7 @@ outterobj_lkh_1d(ode.parameter, basis.initial, derivative.model, likelihood.fun,
 
 \item{basis.initial}{Initial values of the basis coefficients for nonlinear least square optimization.}
 
-\item{derivative.model}{The function defines the ODE model and is the same as the ode.model in 'PC_ODE'}
+\item{derivative.model}{The function defines the ODE model and is the same as the ode.model in 'pcode'}
 
 \item{likelihood.fun}{The likelihood or loglikelihood function of the errors.}
 
