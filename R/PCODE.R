@@ -132,6 +132,14 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
     con.default[(namc <- names(controls))] <- controls
     con.now <- con.default
 
+    #check dimension of lambda: whether there is an uniform lambda for all dimension
+    #                              or             different lambda for each dimension
+    if ((length(lambda) != 1)||(length(lambda) != length(state.names))){
+      print('Wrong dimension of lambda')
+    }
+
+    #check dimension of state variables for the given ODE model
+    #Calling fitting functions for 1-Dimensional case
     if (length(state.names) == 1) {
         if (!is.function(likelihood.fun)) {
             result <- pcode_1d(data = data, time = time, ode.model = ode.model, par.initial = par.initial, par.names = par.names,
@@ -145,12 +153,28 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
         }
     }else {
 
+      #check whether dimension of lambda matches the
+      if ((length(lambda) == 1)&&(length(state.names >1))){
+          multi.lambda <- rep(lambda, length(state.names))
+      }
+
+      if (length(lambda) == length(state.names)){
+        multi.lambda <- lambda
+      }
+
+
+      #Check if there are any missing variables from the ODE model
+      #Calling fitting function for ODE model with missing variables
+      #Multiple dimension case
       if(length(state.names) != ncol(data)){
               result <- pcode_missing(data = data, time = time, ode.model = ode.model,
                                        par.names = par.names, state.names = state.names, likelihood.fun = likelihood.fun,
                                        par.initial = par.initial , basis.list = basis.list, lambda = lambda, controls = con.now)
               return(list(structural.par = result$structural.par, nuissance.par = result$nuissance.par))
       }else{
+        #Running fitting function for ODE models with complete variables
+        #Multiple dimension case
+
         # Evaluate basis functiosn for each state variable
         basis.eval.list <- lapply(basis.list, prepare_basis, times = time, nquadpts = con.now$nquadpts)
 
@@ -170,7 +194,7 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
           # Initial basis coefficients
           initial_coef[[ii]] = ginv(Bmat) %*% t(basis.eval.list[[ii]]$Phi.mat) %*% data[, ii]
           # // TODO: need to check colnames of data
-          inner.input[[ii]] = list(data[, ii], basis.eval.list[[ii]]$Phi.mat, lambda, basis.eval.list[[ii]]$Qmat,
+          inner.input[[ii]] = list(data[, ii], basis.eval.list[[ii]]$Phi.mat, multi.lambda[ii], basis.eval.list[[ii]]$Qmat,
                                    basis.eval.list[[ii]]$Q.D1mat, basis.eval.list[[ii]]$quadts, basis.eval.list[[ii]]$quadwts, time, state.names,
                                    par.names)
         }
@@ -289,10 +313,10 @@ innerobj_multi <- function(basis_coef, ode.par, input, derive.model, NLS = TRUE)
     temp_list <- list(dXdt, temp_eval)
     temp_penalty_resid <- Reduce("-", temp_list)
 
-    lambda <- input[[1]][[3]]
+    #lambda <- input[[1]][[3]]
     penalty_residual <- matrix(NA, nrow = nrow(temp_eval), ncol = ncol(temp_eval))
     for (jj in 1:ndim) {
-        penalty_residual[, jj] <- sqrt(lambda) * sqrt(input[[jj]][[7]]) * temp_penalty_resid[, jj]
+        penalty_residual[, jj] <- sqrt(input[[jj]][[3]]) * sqrt(input[[jj]][[7]]) * temp_penalty_resid[, jj]
     }
 
 
@@ -796,7 +820,7 @@ tunelambda <- function(data, time, ode.model, par.names, state.names, par.initia
         }
     }
 
-  
+
 
     return(list(cv.score = cv.score, lambda_grid = lambda_grid, cv.plot = cv.plot))
 }
@@ -1255,7 +1279,7 @@ bootsvar <- function(data, time, ode.model, par.names, state.names, likelihood.f
             return(ode.model(state = state, parameters = parameters))
         }
         base.est <- ode(y = state.est[1, ], times = time, func = tempmodel, parms = result.ini$structural.par)[, -1]
-        
+
         for (iter in 1:bootsrep) {
             data.boot <- matrix(NA,nrow = length(time),ncol = length(state.names))
             print(paste("Running on bootstrap iteration: ", iter, sep = ""))
@@ -1715,10 +1739,10 @@ innerobj_multi_missing <- function(basis_coef, ode.par, input, derive.model, NLS
   temp_list <- list(dXdt, temp_eval)
   temp_penalty_resid <- Reduce("-", temp_list)
 
-  lambda <- input[[1]][[3]]
+  #lambda <- input[[1]][[3]]
   penalty_residual <- matrix(NA, nrow = nrow(temp_eval), ncol = ncol(temp_eval))
   for (jj in 1:ndim) {
-    penalty_residual[, jj] <- sqrt(lambda) * sqrt(input[[jj]][[7]]) * temp_penalty_resid[, jj]
+    penalty_residual[, jj] <- sqrt(input[[jj]][[3]]) * sqrt(input[[jj]][[7]]) * temp_penalty_resid[, jj]
   }
   #Ignore na residuals
   residual.vec <- c(as.vector(residual)[!is.na(as.vector(residual))], as.vector(penalty_residual))
