@@ -132,12 +132,12 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
     con.default[(namc <- names(controls))] <- controls
     con.now <- con.default
 
+
     #check dimension of lambda: whether there is an uniform lambda for all dimension
     #                              or             different lambda for each dimension
-    if ((length(lambda) != 1)||(length(lambda) != length(state.names))){
+    if ((length(lambda) != 1) && (length(lambda) != length(state.names))){
       print('Wrong dimension of lambda')
     }
-
     #check dimension of state variables for the given ODE model
     #Calling fitting functions for 1-Dimensional case
     if (length(state.names) == 1) {
@@ -548,7 +548,7 @@ pcode_1d <- function(data, time, ode.model, par.initial, par.names, basis, lambd
 
 nls_optimize <- function(fun, x0, options = list(), ..., verbal = 1) {
     stopifnot(is.numeric(x0))
-    opts <- list(tau = 0.001, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
+    opts <- list(tau = 0.01, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
     namedOpts <- match.arg(names(options), choices = names(opts), several.ok = TRUE)
     if (!is.null(names(options)))
         opts[namedOpts] <- options
