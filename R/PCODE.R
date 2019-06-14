@@ -132,14 +132,6 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
     con.default[(namc <- names(controls))] <- controls
     con.now <- con.default
 
-
-    #check dimension of lambda: whether there is an uniform lambda for all dimension
-    #                              or             different lambda for each dimension
-    if ((length(lambda) != 1) && (length(lambda) != length(state.names))){
-      print('Wrong dimension of lambda')
-    }
-    #check dimension of state variables for the given ODE model
-    #Calling fitting functions for 1-Dimensional case
     if (length(state.names) == 1) {
         if (!is.function(likelihood.fun)) {
             result <- pcode_1d(data = data, time = time, ode.model = ode.model, par.initial = par.initial, par.names = par.names,
@@ -152,8 +144,8 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
             return(list(structural.par = result$structural.par, nuissance.par = result$nuissance.par))
         }
     }else {
-
-      #check whether dimension of lambda matches the
+        
+       #check whether dimension of lambda matches the
       if ((length(lambda) == 1)&&(length(state.names >1))){
           multi.lambda <- rep(lambda, length(state.names))
       }
@@ -172,9 +164,6 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
                                        par.initial = par.initial , basis.list = basis.list, lambda = lambda, controls = con.now)
               return(list(structural.par = result$structural.par, nuissance.par = result$nuissance.par))
       }else{
-        #Running fitting function for ODE models with complete variables
-        #Multiple dimension case
-
         # Evaluate basis functiosn for each state variable
         basis.eval.list <- lapply(basis.list, prepare_basis, times = time, nquadpts = con.now$nquadpts)
 
@@ -313,21 +302,27 @@ innerobj_multi <- function(basis_coef, ode.par, input, derive.model, NLS = TRUE)
     temp_list <- list(dXdt, temp_eval)
     temp_penalty_resid <- Reduce("-", temp_list)
 
-    #lambda <- input[[1]][[3]]
+    lambda <- input[[1]][[3]]
     penalty_residual <- matrix(NA, nrow = nrow(temp_eval), ncol = ncol(temp_eval))
     for (jj in 1:ndim) {
-        penalty_residual[, jj] <- sqrt(input[[jj]][[3]]) * sqrt(input[[jj]][[7]]) * temp_penalty_resid[, jj]
+        penalty_residual[, jj] <- sqrt(lambda) * sqrt(input[[jj]][[7]]) * temp_penalty_resid[, jj]
     }
 
 
-
-
-    residual.vec <- c(as.vector(residual), as.vector(penalty_residual))
+    residual.mat <- rbind(residual,penalty_residual)
+    residual.vec <- as.vector(residual.mat)
     if (NLS) {
-        return(residual.vec)
+      return(residual.vec)
     } else {
-        return(sum(residual.vec^2))
+      return(sum(residual.vec^2))
     }
+
+    # residual.vec <- c(as.vector(residual), as.vector(penalty_residual))
+    # if (NLS) {
+    #     return(residual.vec)
+    # } else {
+    #     return(sum(residual.vec^2))
+    # }
 
 }
 
@@ -346,7 +341,7 @@ outterobj_multi_nls <- function(ode.parameter, basis.initial, derivative.model, 
     # Convergence of basis coefficients seems to happen before 'maxeval'.
 
     inner_coef <- nls_optimize.inner(innerobj_multi, basis.initial, ode.par = ode.parameter, derive.model = derivative.model,
-        options = list(maxeval = 30, tolx = 1e-06, tolg = 1e-06), input = inner.input, verbal = 2)$par
+        options = list(maxeval = 50, tolx = 1e-06, tolg = 1e-06), input = inner.input, verbal = 2)$par
     ndim <- length(inner.input)
     npoints <- length(inner.input[[1]][[8]])
     basisnumber <- rep(NA, ndim + 1)
@@ -445,7 +440,7 @@ outterobj <- function(ode.parameter, basis.initial, derivative.model, inner.inpu
 
 
     if (NLS) {
-        inner_coef <- nls_optimize.inner(innerobj, basis.initial, options = list(maxeval = 30), ode.par = ode.parameter,
+        inner_coef <- nls_optimize.inner(innerobj, basis.initial, options = list(maxeval = 50), ode.par = ode.parameter,
             derive.model = derivative.model, input = inner.input)$par
     } else {
         inner_coef <- optim(par = basis.initial, fn = innerobj, ode.par = ode.parameter, derive.model = derivative.model,
@@ -548,7 +543,7 @@ pcode_1d <- function(data, time, ode.model, par.initial, par.names, basis, lambd
 
 nls_optimize <- function(fun, x0, options = list(), ..., verbal = 1) {
     stopifnot(is.numeric(x0))
-    opts <- list(tau = 0.01, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
+    opts <- list(tau = 0.001, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
     namedOpts <- match.arg(names(options), choices = names(opts), several.ok = TRUE)
     if (!is.null(names(options)))
         opts[namedOpts] <- options
@@ -651,7 +646,7 @@ nls_optimize <- function(fun, x0, options = list(), ..., verbal = 1) {
 
 nls_optimize.inner <- function(fun, x0, options = list(), ..., verbal = FALSE) {
     stopifnot(is.numeric(x0))
-    opts <- list(tau = 0.01, tolx = 1e-06, tolg = 1e-06, maxeval = 30)
+    opts <- list(tau = 0.001, tolx = 1e-06, tolg = 1e-06, maxeval = 30)
     namedOpts <- match.arg(names(options), choices = names(opts), several.ok = TRUE)
     if (!is.null(names(options)))
         opts[namedOpts] <- options
@@ -820,7 +815,7 @@ tunelambda <- function(data, time, ode.model, par.names, state.names, par.initia
         }
     }
 
-
+  
 
     return(list(cv.score = cv.score, lambda_grid = lambda_grid, cv.plot = cv.plot))
 }
@@ -1279,7 +1274,7 @@ bootsvar <- function(data, time, ode.model, par.names, state.names, likelihood.f
             return(ode.model(state = state, parameters = parameters))
         }
         base.est <- ode(y = state.est[1, ], times = time, func = tempmodel, parms = result.ini$structural.par)[, -1]
-
+        
         for (iter in 1:bootsrep) {
             data.boot <- matrix(NA,nrow = length(time),ncol = length(state.names))
             print(paste("Running on bootstrap iteration: ", iter, sep = ""))
@@ -1361,9 +1356,9 @@ deltavar <- function(data, time, ode.model, par.names, state.names, likelihood.f
         #-------------------------------
         H_deriv_wrt_y <- rep(NA, length(time))
         inner_coef_upper <- nls_optimize.inner(innerobj, nuis.res, ode.par = struc.res + stepsize, derive.model = ode.model,
-            input = inner.input, options = list(maxeval = 30))$par
+            input = inner.input, options = list(maxeval = 50))$par
         inner_coef_lower <- nls_optimize.inner(innerobj, nuis.res, ode.par = struc.res - stepsize, derive.model = ode.model,
-            input = inner.input, options = list(maxeval = 30))$par
+            input = inner.input, options = list(maxeval = 50))$par
         obs_at_upper <- inner.input[[2]] %*% inner_coef_upper
         obs_at_lower <- inner.input[[2]] %*% inner_coef_lower
         for (index in 1:length(time)) {
@@ -1473,9 +1468,9 @@ deltavar <- function(data, time, ode.model, par.names, state.names, likelihood.f
             par.movedown[par.names[par.index]] <- struc.res[par.names[par.index]] - stepsize[par.names[par.index]]
 
             inner.coef.upper[[par.index]] <- nls_optimize.inner(innerobj_multi, nuis.res, ode.par = par.moveup, derive.model = ode.model,
-                options = list(maxeval = 30, tolx = 1e-06, tolg = 1e-06), input = inner.input, verbal = 2)$par
+                options = list(maxeval = 50, tolx = 1e-06, tolg = 1e-06), input = inner.input, verbal = 2)$par
             inner.coef.lower[[par.index]] <- nls_optimize.inner(innerobj_multi, nuis.res, ode.par = par.movedown, derive.model = ode.model,
-                options = list(maxeval = 30, tolx = 1e-06, tolg = 1e-06), input = inner.input, verbal = 2)$par
+                options = list(maxeval = 50, tolx = 1e-06, tolg = 1e-06), input = inner.input, verbal = 2)$par
         }
 
 
@@ -1662,7 +1657,7 @@ outterobj_multi_missing <- function(ode.parameter, basis.initial, derivative.mod
   # Convergence of basis coefficients seems to happen before 'maxeval'.
 
   inner_coef <- nls_optimize.inner(innerobj_multi_missing, basis.initial, ode.par = ode.parameter, derive.model = derivative.model,
-                                   options = list(maxeval = 30, tolx = 1e-06, tolg = 1e-06), input = inner.input, verbal = 2)$par
+                                   options = list(maxeval = 100, tolx = 1e-06, tolg = 1e-06), input = inner.input, verbal = 2)$par
   ndim <- length(inner.input)
   npoints <- length(inner.input[[1]][[8]])
   basisnumber <- rep(NA, ndim + 1)
@@ -1739,10 +1734,10 @@ innerobj_multi_missing <- function(basis_coef, ode.par, input, derive.model, NLS
   temp_list <- list(dXdt, temp_eval)
   temp_penalty_resid <- Reduce("-", temp_list)
 
-  #lambda <- input[[1]][[3]]
+  lambda <- input[[1]][[3]]
   penalty_residual <- matrix(NA, nrow = nrow(temp_eval), ncol = ncol(temp_eval))
   for (jj in 1:ndim) {
-    penalty_residual[, jj] <- sqrt(input[[jj]][[3]]) * sqrt(input[[jj]][[7]]) * temp_penalty_resid[, jj]
+    penalty_residual[, jj] <- sqrt(lambda) * sqrt(input[[jj]][[7]]) * temp_penalty_resid[, jj]
   }
   #Ignore na residuals
   residual.vec <- c(as.vector(residual)[!is.na(as.vector(residual))], as.vector(penalty_residual))
