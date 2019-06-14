@@ -817,7 +817,7 @@ tunelambda <- function(data, time, ode.model, par.names, state.names, par.initia
 
   
 
-    return(list(cv.score = cv.score, lambda_grid = lambda_grid, cv.plot = cv.plot))
+    return(list(cv.score = cv.score, lambda_grid = lambda_grid))
 }
 
 #' @title Inner objective function (likelihood and multiple dimension version)
