@@ -24,7 +24,7 @@ pcode_1d(data, time, ode.model, par.initial, basis,lambda,controls)
 \value{
 \item{structural.par}{The structural parameters of the ODE model.}
 
-\item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
+\item{nuisance.par}{The nuisance parameters or the basis coefficients for interpolating observations.}
 }
 \description{
 Obtain estiamtes of structural parameters of an ODE model by parameter cascade method.

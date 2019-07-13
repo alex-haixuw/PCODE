@@ -17,33 +17,33 @@ pcode(data, time, ode.model, par.names, state.names, \cr        par.initial, bas
 
 \item{state.names}{The names of state variables defined in the 'ode.model'.}
 
-\item{likelihood.fun}{A likelihood function passed to PCODE in case of that the error termsdevtools::document()do not have a Normal distribution.}
+\item{likelihood.fun}{A likelihood function passed to PCODE in case of that the error terms do not have a Normal distribution.}
 
 \item{par.initial}{Initial value of structural parameters to be optimized.}
 
 \item{basis.list}{A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.}
 
-\item{lambda}{Penalty parameter.}
+\item{lambda}{Penalty parameter for controling the fidelity of interpolation.}
 
 \item{controls}{A list of control parameters. See Details.}
 }
 \value{
 \item{structural.par}{The structural parameters of the ODE model.}
 
-\item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
+\item{nuisance.par}{The nuisance parameters or the basis coefficients for interpolating observations.}
 }
 \description{
-Obtain estiamtes of both structural and nuissance parameters of an ODE model by parameter cascade method.
+Obtain estimates of both structural and nuisance parameters of an ODE model by parameter cascade method.
 }
 \details{
 The \code{controls} argument is a list providing addition inputs for the nonlinear least square optimizer or general optimizer \code{optim}:
-\itemize{
-\item \code{nquadpts} Determine the number of quadrature points for approximating an integral. Default is 101.
-\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuissance parameters.
-\item \code{tau} Initial value of Marquardt parameter. Small values indicate good initial values for structural parameters.
+\describe{
+\item{\code{nquadpts}}{Determine the number of quadrature points for approximating an integral. Default is 101.}
+\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuisance parameters.
+\item \code{tau}  Initial value of Marquardt parameter. Small values indicate good initial values for structural parameters.
 \item \code{tolx} Tolerance for parameters of objective functions. Default is set at 1e-6.
 \item \code{tolg} Tolerance for the gradient of parameters of objective functions. Default is set at 1e-6.
-\item \code{maxeval} The maximum number of evaluation of the optimizer. Default is set at 20.
+\item \code{maxeval} The maximum number of evaluation of the outter optimizer. Default is set at 20.
 }
 }
 \examples{

@@ -1,5 +1,5 @@
 #' @title Parameter Cascade Method for Ordinary Differential Equation Models
-#' @description Obtain estiamtes of both structural and nuissance parameters of an ODE model by parameter cascade method.
+#' @description Obtain estimates of both structural and nuisance parameters of an ODE model by parameter cascade method.
 #' @usage pcode(data, time, ode.model, par.names, state.names, \cr        par.initial, basis.list,lambda,controls)
 #' @param        data A data frame or a matrix contain observations from each dimension of the ODE model.
 #' @param         time A vector contain observation times or a matrix if time points are different between dimensions.
@@ -7,25 +7,25 @@
 #' @param    par.names The names of structural parameters defined in the 'ode.model'.
 #' @param  state.names The names of state variables defined in the 'ode.model'.
 #' @param  par.initial Initial value of structural parameters to be optimized.
-#' @param likelihood.fun A likelihood function passed to PCODE in case of that the error termsdevtools::document()do not have a Normal distribution.
+#' @param likelihood.fun A likelihood function passed to PCODE in case of that the error terms do not have a Normal distribution.
 #' @param   basis.list A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.
-#' @param    lambda Penalty parameter.
+#' @param    lambda Penalty parameter for controling the fidelity of interpolation.
 #' @param     controls A list of control parameters. See Details.
 #'
 #' @details The \code{controls} argument is a list providing addition inputs for the nonlinear least square optimizer or general optimizer \code{optim}:
-#' \itemize{
-#'\item \code{nquadpts} Determine the number of quadrature points for approximating an integral. Default is 101.
-#'\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuissance parameters.
-#'\item \code{tau} Initial value of Marquardt parameter. Small values indicate good initial values for structural parameters.
+#' \describe{
+#'\item{\code{nquadpts}}{Determine the number of quadrature points for approximating an integral. Default is 101.}
+#'\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuisance parameters.
+#'\item \code{tau}  Initial value of Marquardt parameter. Small values indicate good initial values for structural parameters.
 #'\item \code{tolx} Tolerance for parameters of objective functions. Default is set at 1e-6.
 #'\item \code{tolg} Tolerance for the gradient of parameters of objective functions. Default is set at 1e-6.
-#'\item \code{maxeval} The maximum number of evaluation of the optimizer. Default is set at 20.
+#'\item \code{maxeval} The maximum number of evaluation of the outter optimizer. Default is set at 20.
 #'}
 #'
 #'
 #' @return   \item{structural.par}{The structural parameters of the ODE model.}
 #'
-#' @return    \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
+#' @return   \item{nuisance.par}{The nuisance parameters or the basis coefficients for interpolating observations.}
 #' @examples require(FDA)
 #'require(deSolve)
 #'#Simple ode model example
@@ -136,15 +136,15 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
         if (!is.function(likelihood.fun)) {
             result <- pcode_1d(data = data, time = time, ode.model = ode.model, par.initial = par.initial, par.names = par.names,
                 basis = basis.list, lambda = lambda, controls = con.now)
-            return(list(structural.par = result$structural.par, nuissance.par = result$nuissance.par))
+            return(list(structural.par = result$structural.par, nuisance.par = result$nuisance.par))
         } else {
             result <- pcode_lkh_1d(data = data, time = time, likelihood.fun = likelihood.fun, ode.model = ode.model,
                 par.initial = par.initial, range = c(0, 1), par.names = par.names, state.names = state.names, basis.list = basis.list,
                 lambda = lambda, controls = con.now)
-            return(list(structural.par = result$structural.par, nuissance.par = result$nuissance.par))
+            return(list(structural.par = result$structural.par, nuisance.par = result$nuisance.par))
         }
     }else {
-        
+
        #check whether dimension of lambda matches the
       if ((length(lambda) == 1)&&(length(state.names >1))){
           multi.lambda <- rep(lambda, length(state.names))
@@ -162,7 +162,7 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
               result <- pcode_missing(data = data, time = time, ode.model = ode.model,
                                        par.names = par.names, state.names = state.names, likelihood.fun = likelihood.fun,
                                        par.initial = par.initial , basis.list = basis.list, lambda = lambda, controls = con.now)
-              return(list(structural.par = result$structural.par, nuissance.par = result$nuissance.par))
+              return(list(structural.par = result$structural.par, nuisance.par = result$nuisance.par))
       }else{
         # Evaluate basis functiosn for each state variable
         basis.eval.list <- lapply(basis.list, prepare_basis, times = time, nquadpts = con.now$nquadpts)
@@ -175,7 +175,7 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
         initial_coef <- list()
 
         for (ii in 1:ndim) {
-          # For each dimension, obtain initial value for the nuissance parameters or the basis coefficients
+          # For each dimension, obtain initial value for the nuisance parameters or the basis coefficients
           Rmat = t(basis.eval.list[[ii]]$Q.D2mat) %*% (basis.eval.list[[ii]]$Q.D2mat * (basis.eval.list[[ii]]$quadwts %*%
                                                                                           t(rep(1, basis.list[[ii]]$nbasis))))
           basismat2 = t(basis.eval.list[[ii]]$Phi.mat) %*% basis.eval.list[[ii]]$Phi.mat
@@ -196,13 +196,13 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
         par.final <- nls_optimize(options = list(maxeval = con.now$maxeval, tau = con.now$tau), outterobj_multi_nls,
                                   par.initial, basis.initial = unlist(initial_coef), derivative.model = ode.model, inner.input = inner.input,
                                   verbal = 1)$par
-        # Condition on the obtained structural parameter, calculate the nuissance parameter or the basis coefficients to
+        # Condition on the obtained structural parameter, calculate the nuisance parameter or the basis coefficients to
         # interpolate data
         basis.coef.final <- nls_optimize.inner(innerobj_multi, unlist(initial_coef), ode.par = par.final, derive.model = ode.model,
                                                input = inner.input, NLS = TRUE, options = list(tau = 0.01))$par
 
 
-        return(list(structural.par = par.final, nuissance.par = basis.coef.final))
+        return(list(structural.par = par.final, nuisance.par = basis.coef.final))
       }
 
     }
@@ -476,7 +476,7 @@ outterobj <- function(ode.parameter, basis.initial, derivative.model, inner.inpu
 #' @param     controls A list of control parameters. See ‘Details’.
 #'
 #' @return   \item{structural.par}{The structural parameters of the ODE model.}
-#' @return    \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
+#' @return    \item{nuisance.par}{The nuisance parameters or the basis coefficients for interpolating observations.}
 pcode_1d <- function(data, time, ode.model, par.initial, par.names, basis, lambda = NULL, controls = NULL) {
 
     # number of parameters
@@ -528,7 +528,7 @@ pcode_1d <- function(data, time, ode.model, par.initial, par.names, basis, lambd
     basiscoef <- nls_optimize.inner(innerobj, initial_coef, ode.par = theta.final, derive.model = ode.model, input = inner.input,
         NLS = TRUE)$par
 
-    return(list(structural.par = theta.final, nuissance.par = basiscoef))
+    return(list(structural.par = theta.final, nuisance.par = basiscoef))
 }
 
 #' @title       Optimizer for non-linear least square problems
@@ -779,7 +779,7 @@ tunelambda <- function(data, time, ode.model, par.names, state.names, par.initia
             #
             par.res <- pcode.result$structural.par
             names(par.res) <- par.names
-            nui.res <- pcode.result$nuissance.par
+            nui.res <- pcode.result$nuisance.par
             index <- rep(NA, length(state.names) + 1)
             index[1] <- 0
             # Evaluate
@@ -815,7 +815,7 @@ tunelambda <- function(data, time, ode.model, par.names, state.names, par.initia
         }
     }
 
-  
+
 
     return(list(cv.score = cv.score, lambda_grid = lambda_grid))
 }
@@ -901,7 +901,7 @@ innerobj_lkh <- function(basis_coef, ode.par, input, derive.model, likelihood.fu
 #' @return neglik The negative of the likelihood or the loglikelihood function that will be passed further to the 'optim' function.
 outterobj_lkh <- function(ode.parameter, basis.initial, derivative.model, likelihood.fun, inner.input) {
 
-    # Profiled estimation on the nuissance parameters
+    # Profiled estimation on the nuisance parameters
     inner_coef <- optim(basis.initial, innerobj_lkh, ode.par = ode.parameter, derive.model = derivative.model, likelihood.fun = likelihood.fun,
         control = list(maxit = 50))
 
@@ -928,7 +928,7 @@ outterobj_lkh <- function(ode.parameter, basis.initial, derivative.model, likeli
 
 
 #' @title pcode_lkh (likelihood and multiple dimension version)
-#' @description Obtain estimates of both structural and nuissance parameters of an ODE model by parameter cascade method.
+#' @description Obtain estimates of both structural and nuisance parameters of an ODE model by parameter cascade method.
 #' @usage pcode_lkh(data, likelihood.fun, time, ode.model, par.names, state.names, par.initial, basis.list, lambda, controls=list())
 #' @param data A data frame or a matrix contain observations from each dimension of the ODE model.
 #' @param likelihood.fun A function computes the likelihood or the loglikelihood of the errors.
@@ -944,7 +944,7 @@ outterobj_lkh <- function(ode.parameter, basis.initial, derivative.model, likeli
 #' @details The \code{controls} argument is a list providing addition inputs for the nonlinear least square optimizer:
 #' \itemize{
 #'\item \code{nquadpts} Determine the number of quadrature points for approximating an integral. Default is 101.
-#'\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuissance parameters.
+#'\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuisance parameters.
 #'\item \code{tau} Initial value of Marquardt parameter. Small values indicate good initial values for structural parameters.
 #'\item \code{tolx} Tolerance for parameters of objective functions. Default is set at 1e-6.
 #'\item \code{tolg} Tolerance for the gradient of parameters of objective functions. Default is set at 1e-6.
@@ -953,7 +953,7 @@ outterobj_lkh <- function(ode.parameter, basis.initial, derivative.model, likeli
 #'
 #' @return   \item{structural.par}{The structural parameters of the ODE model.}
 #'
-#' @return    \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
+#' @return    \item{nuisance.par}{The nuisance parameters or the basis coefficients for interpolating observations.}
 
 
 
@@ -977,7 +977,7 @@ pcode_lkh <- function(data, likelihood.fun, time, ode.model, par.names, state.na
     initial_coef <- list()
 
     for (ii in 1:ndim) {
-        # For each dimension, obtain initial value for the nuissance parameters or the basis coefficients
+        # For each dimension, obtain initial value for the nuisance parameters or the basis coefficients
         Rmat = t(basis.eval.list[[ii]]$Q.D2mat) %*% (basis.eval.list[[ii]]$Q.D2mat * (basis.eval.list[[ii]]$quadwts %*%
             t(rep(1, basis.list[[ii]]$nbasis))))
         basismat2 = t(basis.eval.list[[ii]]$Phi.mat) %*% basis.eval.list[[ii]]$Phi.mat
@@ -995,14 +995,14 @@ pcode_lkh <- function(data, likelihood.fun, time, ode.model, par.names, state.na
     basis.coef.final <- optim(unlist(initial_coef), innerobj_lkh, ode.par = par.final, input = inner.input, derive.model = ode.model,
         likelihood.fun = likelihood.fun)
 
-    return(list(structural.par = par.final, nuissance.par = basis.coef.final))
+    return(list(structural.par = par.final, nuisance.par = basis.coef.final))
 
 }
 
 
 
 #' @title Parameter Cascade Method for Ordinary Differential Equation Models (likelihood and Single dimension version)
-#' @description Obtain estimates of both structural and nuissance parameters of an ODE model by parameter cascade method.
+#' @description Obtain estimates of both structural and nuisance parameters of an ODE model by parameter cascade method.
 #' @usage pcode_lkh_1d(data, likelihood.fun, time, ode.model, par.names, state.names, par.initial, basis.list, lambda, controls=list())
 #' @param data A data frame or a matrix contain observations from each dimension of the ODE model.
 #' @param likelihood.fun A function computes the likelihood or the loglikelihood of the errors.
@@ -1018,7 +1018,7 @@ pcode_lkh <- function(data, likelihood.fun, time, ode.model, par.names, state.na
 #' @details The \code{controls} argument is a list providing addition inputs for the nonlinear least square optimizer:
 #' \itemize{
 #'\item \code{nquadpts} Determine the number of quadrature points for approximating an integral. Default is 101.
-#'\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuissance parameters.
+#'\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuisance parameters.
 #'\item \code{tau} Initial value of Marquardt parameter. Small values indicate good initial values for structural parameters.
 #'\item \code{tolx} Tolerance for parameters of objective functions. Default is set at 1e-6.
 #'\item \code{tolg} Tolerance for the gradient of parameters of objective functions. Default is set at 1e-6.
@@ -1027,7 +1027,7 @@ pcode_lkh <- function(data, likelihood.fun, time, ode.model, par.names, state.na
 #'
 #' @return   \item{structural.par}{The structural parameters of the ODE model.}
 #'
-#' @return    \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
+#' @return    \item{nuisance.par}{The nuisance parameters or the basis coefficients for interpolating observations.}
 pcode_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial, range, basis.list, par.names, state.names,
     lambda = NULL, controls = NULL) {
     # Set up default controls for optimizations and quadrature evaluation
@@ -1080,7 +1080,7 @@ pcode_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial, ran
         likelihood.fun = likelihood.fun)$par
 
 
-    return(list(structural.par = theta.final, nuissance.par = basiscoef))
+    return(list(structural.par = theta.final, nuisance.par = basiscoef))
 }
 
 
@@ -1097,7 +1097,7 @@ pcode_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial, ran
 
 outterobj_lkh_1d <- function(ode.parameter, basis.initial, derivative.model, likelihood.fun, inner.input) {
 
-    # Profiled estimation on the nuissance parameters
+    # Profiled estimation on the nuisance parameters
     basis_coef <- optim(basis.initial, innerobj_lkh_1d, ode.par = ode.parameter, derive.model = derivative.model, likelihood.fun = likelihood.fun,
         input = inner.input)$par
 
@@ -1212,7 +1212,7 @@ bootsvar <- function(data, time, ode.model, par.names, state.names, likelihood.f
 
     # 1D case for least square functions
     if (length(state.names) == 1 && length(par.names) == 1) {
-        nuipar.ini <- result.ini$nuissance.par
+        nuipar.ini <- result.ini$nuisance.par
         phi.ini <- eval.basis(time, basis.list)
         state.est <- phi.ini %*% nuipar.ini
         residual <- data - state.est
@@ -1244,7 +1244,7 @@ bootsvar <- function(data, time, ode.model, par.names, state.names, likelihood.f
     # MD case for least square
     if (length(state.names) >= 2 && length(par.names) >= 2) {
         # Get basis coefficients
-        nuipar.ini <- result.ini$nuissance.par
+        nuipar.ini <- result.ini$nuisance.par
         # allocate vector for storing state and variance estimate
         state.est <- matrix(NA, ncol = length(state.names), nrow = length(time))
         colnames(state.est) <- state.names
@@ -1274,7 +1274,7 @@ bootsvar <- function(data, time, ode.model, par.names, state.names, likelihood.f
             return(ode.model(state = state, parameters = parameters))
         }
         base.est <- ode(y = state.est[1, ], times = time, func = tempmodel, parms = result.ini$structural.par)[, -1]
-        
+
         for (iter in 1:bootsrep) {
             data.boot <- matrix(NA,nrow = length(time),ncol = length(state.names))
             print(paste("Running on bootstrap iteration: ", iter, sep = ""))
@@ -1340,7 +1340,7 @@ deltavar <- function(data, time, ode.model, par.names, state.names, likelihood.f
 
     struc.res <- result$structural.par
     names(struc.res) <- par.names
-    nuis.res <- result$nuissance.par
+    nuis.res <- result$nuisance.par
     if (length(state.names) == 1) {
         basis.eval.list <- prepare_basis(basis.list, times = time, nquadpts = con.now$nquadpts)
         inner.input <- list(data, basis.eval.list$Phi.mat, lambda, basis.eval.list$Qmat, basis.eval.list$Q.D1mat, basis.eval.list$quadts,
@@ -1385,7 +1385,7 @@ deltavar <- function(data, time, ode.model, par.names, state.names, likelihood.f
         names(stepsize) <- par.names
         # evaluation of basis objects for each dimension over time points and quadrature points for further use
         basis.eval.list <- lapply(basis.list, prepare_basis, times = time, nquadpts = con.now$nquadpts)
-        # Sort nuissance parameters into each dimension and prepare inner input for inner objective function
+        # Sort nuisance parameters into each dimension and prepare inner input for inner objective function
         basis.index <- length(state.names) + 1
         basis.index[1] <- 0
         coef.list <- list()
@@ -1554,7 +1554,7 @@ deltavar <- function(data, time, ode.model, par.names, state.names, likelihood.f
 }
 
 #' @title Parameter Cascade Method for Ordinary Differential Equation Models with missing state variable
-#' @description Obtain estiamtes of both structural and nuissance parameters of an ODE model by parameter cascade method when the dynamics are partially observed.
+#' @description Obtain estiamtes of both structural and nuisance parameters of an ODE model by parameter cascade method when the dynamics are partially observed.
 #' @usage pcode_missing(data, time, ode.model, par.names, state.names, \cr        par.initial, basis.list,lambda,controls)
 #' @param        data A data frame or a matrix contain observations from each dimension of the ODE model.
 #' @param         time A vector contain observation times or a matrix if time points are different between dimensions.
@@ -1570,7 +1570,7 @@ deltavar <- function(data, time, ode.model, par.names, state.names, likelihood.f
 #' @details The \code{controls} argument is a list providing addition inputs for the nonlinear least square optimizer or general optimizer \code{optim}:
 #' \itemize{
 #'\item \code{nquadpts} Determine the number of quadrature points for approximating an integral. Default is 101.
-#'\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuissance parameters.
+#'\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuisance parameters.
 #'\item \code{tau} Initial value of Marquardt parameter. Small values indicate good initial values for structural parameters.
 #'\item \code{tolx} Tolerance for parameters of objective functions. Default is set at 1e-6.
 #'\item \code{tolg} Tolerance for the gradient of parameters of objective functions. Default is set at 1e-6.
@@ -1580,7 +1580,7 @@ deltavar <- function(data, time, ode.model, par.names, state.names, likelihood.f
 #'
 #' @return   \item{structural.par}{The structural parameters of the ODE model.}
 #'
-#' @return    \item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
+#' @return    \item{nuisance.par}{The nuisance parameters or the basis coefficients for interpolating observations.}
 pcode_missing <- function(data,time, ode.model,par.names, state.names, likelihood.fun,
                            par.initial, basis.list, lambda, controls){
 
@@ -1599,7 +1599,7 @@ pcode_missing <- function(data,time, ode.model,par.names, state.names, likelihoo
 
   for (ii in 1:length(observ.index)) {
     index <- observ.index[ii]
-    # For each dimension, obtain initial value for the nuissance parameters or the basis coefficients
+    # For each dimension, obtain initial value for the nuisance parameters or the basis coefficients
     Rmat = t(basis.eval.list[[index]]$Q.D2mat) %*% (basis.eval.list[[index]]$Q.D2mat * (basis.eval.list[[index]]$quadwts %*%
                                                                                           t(rep(1, basis.list[[index]]$nbasis))))
     basismat2 = t(basis.eval.list[[index]]$Phi.mat) %*% basis.eval.list[[index]]$Phi.mat
@@ -1615,7 +1615,7 @@ pcode_missing <- function(data,time, ode.model,par.names, state.names, likelihoo
   noobserv.index <- (1:length(state.names))[-observ.index]
   for (ii in 1:length(noobserv.index)){
     index <- noobserv.index[ii]
-    # For each dimension, obtain initial value for the nuissance parameters or the basis coefficients
+    # For each dimension, obtain initial value for the nuisance parameters or the basis coefficients
     Rmat = t(basis.eval.list[[index]]$Q.D2mat) %*% (basis.eval.list[[index]]$Q.D2mat * (basis.eval.list[[index]]$quadwts %*%
                                                                                           t(rep(1, basis.list[[index]]$nbasis))))
     basismat2 = t(basis.eval.list[[index]]$Phi.mat) %*% basis.eval.list[[index]]$Phi.mat
@@ -1631,13 +1631,13 @@ pcode_missing <- function(data,time, ode.model,par.names, state.names, likelihoo
   par.final <- nls_optimize(options = list(maxeval = controls$maxeval, tau = controls$tau), outterobj_multi_missing,
                             par.initial, basis.initial = unlist(initial_coef), derivative.model = ode.model, inner.input = inner.input,
                             verbal = 1)$par
-  # Condition on the obtained structural parameter, calculate the nuissance parameter or the basis coefficients to
+  # Condition on the obtained structural parameter, calculate the nuisance parameter or the basis coefficients to
   # interpolate data
   basis.coef.final <- nls_optimize.inner(innerobj_multi_missing, unlist(initial_coef), ode.par = par.final, derive.model = ode.model,
                                          input = inner.input, NLS = TRUE, options = list(tau = 0.01))$par
 
 
-  return(list(structural.par = par.final, nuissance.par = basis.coef.final))
+  return(list(structural.par = par.final, nuisance.par = basis.coef.final))
 
 }
 

@@ -30,16 +30,16 @@ pcode_lkh_1d(data, likelihood.fun, time, ode.model, par.names, state.names, par.
 \value{
 \item{structural.par}{The structural parameters of the ODE model.}
 
-\item{nuissance.par}{The nuissance parameters or the basis coefficients for interpolating observations.}
+\item{nuisance.par}{The nuisance parameters or the basis coefficients for interpolating observations.}
 }
 \description{
-Obtain estimates of both structural and nuissance parameters of an ODE model by parameter cascade method.
+Obtain estimates of both structural and nuisance parameters of an ODE model by parameter cascade method.
 }
 \details{
 The \code{controls} argument is a list providing addition inputs for the nonlinear least square optimizer:
 \itemize{
 \item \code{nquadpts} Determine the number of quadrature points for approximating an integral. Default is 101.
-\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuissance parameters.
+\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuisance parameters.
 \item \code{tau} Initial value of Marquardt parameter. Small values indicate good initial values for structural parameters.
 \item \code{tolx} Tolerance for parameters of objective functions. Default is set at 1e-6.
 \item \code{tolg} Tolerance for the gradient of parameters of objective functions. Default is set at 1e-6.
