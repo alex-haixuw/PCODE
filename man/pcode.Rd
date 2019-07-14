@@ -39,11 +39,11 @@ Obtain estimates of both structural and nuisance parameters of an ODE model by p
 The \code{controls} argument is a list providing addition inputs for the nonlinear least square optimizer or general optimizer \code{optim}:
 \describe{
 \item{\code{nquadpts}}{Determine the number of quadrature points for approximating an integral. Default is 101.}
-\item \code{smooth.lambda} Determine the smoothness penalty for obtaining initial value of nuisance parameters.
-\item \code{tau}  Initial value of Marquardt parameter. Small values indicate good initial values for structural parameters.
-\item \code{tolx} Tolerance for parameters of objective functions. Default is set at 1e-6.
-\item \code{tolg} Tolerance for the gradient of parameters of objective functions. Default is set at 1e-6.
-\item \code{maxeval} The maximum number of evaluation of the outter optimizer. Default is set at 20.
+\item{\code{smooth.lambda}}{Determine the smoothness penalty for obtaining initial value of nuisance parameters.}
+\item{\code{tau}}{Initial value of Marquardt parameter. Small values indicate good initial values for structural parameters.}
+\item{\code{tolx}}{Tolerance for parameters of objective functions. Default is set at 1e-6.}
+\item{\code{tolg}}{Tolerance for the gradient of parameters of objective functions. Default is set at 1e-6.}
+\item{\code{maxeval}}{The maximum number of evaluation of the outter optimizer. Default is set at 20.}
 }
 }
 \examples{
@@ -54,7 +54,7 @@ require(deSolve)
 model.par   <- c(theta = c(0.1))
 #define state initial value
 state       <- c(X     = 0.1)
-#define the ode model for obtaining ode solutions
+#Define model for function 'ode' to numerically solve the system
 ode.model <- function(t, state,parameters){
  with(as.list(c(state,parameters)),
       {
@@ -62,85 +62,77 @@ ode.model <- function(t, state,parameters){
         return(list(dX))
       })
 }
-
-#Observation points
+#Observation time points
 times <- seq(0,100,length.out=101)
 #Solve the ode model
 desolve.mod <- ode(y=state,times=times,func=ode.model,parms = model.par)
-#Simulate data
+#Prepare for doing parameter cascading method
+#Generate basis object for interpolation and as argument of pcode
+#21 konts equally spaced within [0,100]
+knots <- seq(0,100,length.out=21)
+#order of basis functions
+norder <- 4
+#number of basis funtions
+nbasis <- length(knots) + norder - 2
+#creating Bspline basis
+basis  <- create.bspline.basis(c(0,100),nbasis,norder,breaks = knots)
+#Add random noise to ode solution for simulating data
 nobs  <- length(times)
 scale <- 0.5
 noise <- scale*rnorm(n = nobs, mean = 0 , sd = 1)
-observ <- desolve.mod[,2] + noise
-
-Dmodel <- function(state,parameters){
-with(as.list(c(state,parameters)),
-    {
-      dX <- theta*X*(1-X/10)
-      return(list(dX))
-    })
-}
-#Generating basis functions for interpolating observations
-#knots located at each observation time point
-knots <- seq(0,100,length.out=21)
-#order of basis functions
-norder <- 5
-#number of basis funtions
-nbasis <- length(knots) + norder - 2
-#creating basis
-basis  <- create.bspline.basis(c(0,100),nbasis,norder,breaks = knots)
-
-pcode.result <- pcode(data = observ, time = times, ode.model = Dmodel, par.initial = 0.3,
-                     par.names = 'theta',state.names = 'X',basis.list = basis, lambda = 1e2)
+observation <- desolve.mod[,2] + noise
+#plot simulated data against generating model
+plot(desolve.mod,main=names(state),ylab='') #curve
+points(times, observation,pch='*',col='blue')    #observation
+#parameter estimation
+pcode.result <- pcode(data = observation, time = times, ode.model = ode.model,
+                     par.initial = 0.3, par.names = 'theta',state.names = 'X',
+                     basis.list = basis, lambda = 1e2)
 
 #Multiple dimension example
 #Define the FitzHugh-Nagumo model
+#Define model parameters
 model.par   <- c(a=0.2,b=0.2,c=3)
+#Define initial value of state variables
 state       <- c(V=-1,R=1)
-ode.model <- function(t,state,parameters){
-with(as.list(c(state,parameters)),
-  {
-     dV <- c*(V - (V^3)/3 + R)
-     dR <- -(1/c) * (V - a + b*R)
-     return(list(c(dV,dR)))
-   })}
-
-#Observation points
-times <- seq(0,20,length.out=11)
-#Generate ODE observations
+#Define ode model for obtaining numeric solution
+ode.model <- function(t, state,parameters){
+ with(as.list(c(state,parameters)),
+      {
+        dV <- c*(V - (V^3)/3 + R)
+        dR <- -(1/c) * (V - a + b*R)
+        return(list(c(dV,dR)))
+      })}
+#Define observation points
+times <- seq(0,20,length.out=401)
+#Obtain ode solution
 desolve.mod <- ode(y=state,times=times,func=ode.model,parms = model.par)
-
-#Number of observations
+#Generate measurement noises
 nobs  <- length(times)
-#standard deviation of noise
 scale <- 0.1
-noise <- scale*rnorm(n = nobs, mean = 0 , sd = 1)
-#Add some noises to data
+noise_v <- scale*rnorm(n = nobs, mean = 0 , sd = 1)
+noise_r <- scale*rnorm(n = nobs, mean = 0 , sd = 1)
+#Store observations
 observ <- matrix(NA, nrow = length(times),ncol =3)
 observ[,1] <- times
-observ[,2] <- desolve.mod[,2] + noise
-observ[,3] <- desolve.mod[,3] + noise
-
-#Define basis for each dimension
-#In this case, the same basis is used for both V(t) and R(t)
-knots <- seq(0,20,length.out=11)
+observ[,2] <- desolve.mod[,2] + noise_v
+observ[,3] <- desolve.mod[,3] + noise_r
+#Define basis for interpolating observation of both state variables
+#can use same basis for both dimensions
+knots <- seq(0,20,length.out=101)
 #order of basis functions
 norder <- 4
 #number of basis funtions
 nbasis <- length(knots) + norder - 2
 #creating basis
-basis <- create.bspline.basis(c(0,20),nbasis,norder,breaks = knots)
-basis.list <- list(basis,basis)
-
-#Define the ode model for parameter cascade method
-Dmodel <- function(state,parameters){
-with(as.list(c(state,parameters)),
-  {
-     dV <- c*(V - (V^3)/3 + R)
-     dR <- -(1/c) * (V - a + b*R)
-     return(list(c(dV,dR)))
-   })}
-pcode.result <- pcode(data = observ[,2:3], time= observ[,1], ode.model = Dmodel, par.names = c('a','b','c'),
-                      state.names = c('V','R'), par.initial = rnorm(3),lambda = 1e2,basis.list = basis.list,
-                      controls = list(smooth.lambda = 1e2,verbal = 1,maxeval = 200))
+basis  <- create.bspline.basis(c(0,20),nbasis,norder,breaks = knots)
+#Make a list of basis object for interpolation
+basis.list <- list(basis, basis)
+data <- observ[,2:3]
+colnames(data) <- c('V','R')
+#parameter estimation
+pcode.result <- pcode(data = observ[,2:3], time= observ[,1], ode.model = ode.model,
+                     par.names = c('a','b','c'),state.names = c('V','R'), par.initial = c(0.1,0.3,4),
+                     lambda = c(1e2,1e2),basis.list = basis.list,
+                     controls = list(smooth.lambda = 10,verbal = 1,maxeval = 150))
 }

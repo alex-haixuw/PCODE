@@ -11,7 +11,7 @@ outterobj_multi_nls(ode.parameter, basis.initial, derivative.model, inner.input,
 
 \item{basis.initial}{Initial values of the basis coefficients for nonlinear least square optimization.}
 
-\item{derivative.model}{The function defines the ODE model and is the same as the ode.model in 'pcode'}
+\item{derivative.model}{The function defines the ODE model and is the same as the \code{ode.model} in \code{pcode}.}
 
 \item{inner.input}{Input that will be passed to the inner objective function. Contains dependencies for the optimization, including observations, penalty parameter lambda, and etc..}
 
