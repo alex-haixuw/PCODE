@@ -4,7 +4,8 @@
 \alias{deltavar}
 \title{Numeric estimation of variance of structural parameters by Delta method.}
 \usage{
-deltavar(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, \cr        par.initial, basis.list, lambda = NULL,stepsize,y_stepsize,controls = NULL)
+deltavar(data, time, ode.model,par.names,state.names,
+                 likelihood.fun par.initial, basis.list, lambda,stepsize,y_stepsize,controls)
 }
 \arguments{
 \item{data}{A data frame or a matrix contain observations from each dimension of the ODE model.}

@@ -4,7 +4,7 @@
 \alias{pcode_missing}
 \title{Parameter Cascade Method for Ordinary Differential Equation Models with missing state variable}
 \usage{
-pcode_missing(data, time, ode.model, par.names, state.names, \cr        par.initial, basis.list,lambda,controls)
+pcode_missing(data, time, ode.model, par.names, state.names, likelihood.fun,par.initial, basis.list,lambda,controls)
 }
 \arguments{
 \item{data}{A data frame or a matrix contain observations from each dimension of the ODE model.}

@@ -4,7 +4,7 @@
 \alias{pcode_1d}
 \title{Parameter Cascade Method for Ordinary Differential Equation Models (Single dimension version)}
 \usage{
-pcode_1d(data, time, ode.model, par.initial, basis,lambda,controls)
+pcode_1d(data, time, ode.model, par.initial,par.names, basis,lambda,controls = list())
 }
 \arguments{
 \item{data}{A data frame or a vector contains observations from the ODE model.}
@@ -14,6 +14,8 @@ pcode_1d(data, time, ode.model, par.initial, basis,lambda,controls)
 \item{ode.model}{Defined R function that computes the time derivative of the ODE model given observations of states variable.}
 
 \item{par.initial}{Initial value of structural parameters to be optimized.}
+
+\item{par.names}{The names of structural parameters defined in the 'ode.model'.}
 
 \item{basis}{A basis objects for smoothing observations.}
 

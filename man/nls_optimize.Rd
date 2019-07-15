@@ -4,16 +4,18 @@
 \alias{nls_optimize}
 \title{Optimizer for non-linear least square problems}
 \usage{
-nls_optimize(fun, x0, ..., options)
+nls_optimize(fun, x0, ..., options,verbal)
 }
 \arguments{
 \item{fun}{The function returns the vector of weighted residuals.}
 
 \item{x0}{The initial value for optimization.}
 
+\item{...}{Parameters to be passed for \code{fun}}
+
 \item{options}{Additional optimization controls.}
 
-\item{...}{Parameters to be passed for \code{fun}}
+\item{verbal}{Default = 1 for printing iteration and other for suppressing}
 }
 \value{
 \item{par}{The solution to the non-linear least square problem, the same size as \code{x0}}

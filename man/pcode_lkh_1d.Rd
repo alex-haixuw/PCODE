@@ -4,24 +4,25 @@
 \alias{pcode_lkh_1d}
 \title{Parameter Cascade Method for Ordinary Differential Equation Models (likelihood and Single dimension version)}
 \usage{
-pcode_lkh_1d(data, likelihood.fun, time, ode.model, par.names, state.names, par.initial, basis.list, lambda, controls=list())
+pcode_lkh_1d(data, likelihood.fun, time, ode.model, par.names,
+                    state.names, par.initial, basis.list, lambda, controls)
 }
 \arguments{
 \item{data}{A data frame or a matrix contain observations from each dimension of the ODE model.}
 
-\item{time}{A vector contains observation ties or a matrix if time points are different between dimesion.}
-
 \item{likelihood.fun}{A function computes the likelihood or the loglikelihood of the errors.}
 
+\item{time}{A vector contains observation ties or a matrix if time points are different between dimesion.}
+
 \item{ode.model}{An R function that computes the time derivative of the ODE model given observations of states variable and structural parameters.}
-
-\item{par.initial}{Initial value of structural parameters to be optimized.}
-
-\item{basis.list}{A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.}
 
 \item{par.names}{The names of structural parameters defined in the 'ode.model'.}
 
 \item{state.names}{The names of state variables defined in the 'ode.model'.}
+
+\item{par.initial}{Initial value of structural parameters to be optimized.}
+
+\item{basis.list}{A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.}
 
 \item{lambda}{Penalty parameter.}
 

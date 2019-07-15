@@ -4,7 +4,8 @@
 \alias{tunelambda}
 \title{Find optimial penalty parameter lambda by cross-validation.}
 \usage{
-tunelambda(data, time, ode.model, par.names, state.names, \cr        par.initial, basis.list,lambda,lambda_grid,cv_points,controls)
+tunelambda(data, time, ode.model, par.names, state.names,
+                  par.initial, basis.list,lambda_grid,cv_portion,kfolds, rep,controls)
 }
 \arguments{
 \item{data}{A data frame or matrix contrain observations from each dimension of the ODE model.}

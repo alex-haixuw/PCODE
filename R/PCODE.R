@@ -1,13 +1,13 @@
 #' @title Parameter Cascade Method for Ordinary Differential Equation Models
 #' @description Obtain estimates of both structural and nuisance parameters of an ODE model by parameter cascade method.
-#' @usage pcode(data, time, ode.model, par.names, state.names, \cr        par.initial, basis.list,lambda,controls)
+#' @usage pcode(data, time, ode.model, par.names, state.names, likelihood.fun, par.initial, basis.list,lambda,controls)
 #' @param        data A data frame or a matrix contain observations from each dimension of the ODE model.
 #' @param         time A vector contain observation times or a matrix if time points are different between dimensions.
 #' @param    ode.model An R function that computes the time derivative of the ODE model given observations of states variable and structural parameters.
 #' @param    par.names The names of structural parameters defined in the 'ode.model'.
 #' @param  state.names The names of state variables defined in the 'ode.model'.
-#' @param  par.initial Initial value of structural parameters to be optimized.
 #' @param likelihood.fun A likelihood function passed to PCODE in case of that the error terms do not have a Normal distribution.
+#' @param  par.initial Initial value of structural parameters to be optimized.
 #' @param   basis.list A list of basis objects for smoothing each dimension's observations. Can be the same or different across dimensions.
 #' @param    lambda Penalty parameter for controling the fidelity of interpolation.
 #' @param     controls A list of control parameters. See Details.
@@ -26,8 +26,10 @@
 #' @return   \item{structural.par}{The structural parameters of the ODE model.}
 #'
 #' @return   \item{nuisance.par}{The nuisance parameters or the basis coefficients for interpolating observations.}
-#' @examples require(FDA)
-#'require(deSolve)
+#' @examples library(fda)
+#'library(deSolve)
+#'library(MASS)
+#'library(pracma)
 #'#Simple ode model example
 #'#define model parameters
 #'model.par   <- c(theta = c(0.1))
@@ -65,59 +67,13 @@
 #'plot(desolve.mod,main=names(state),ylab='') #curve
 #'points(times, observation,pch='*',col='blue')    #observation
 #'#parameter estimation
-#'pcode.result <- pcode(data = observation, time = times, ode.model = ode.model,
+#'pcode(data = observation, time = times, ode.model = ode.model,
 #'                      par.initial = 0.3, par.names = 'theta',state.names = 'X',
 #'                      basis.list = basis, lambda = 1e2)
 #'
-#'#Multiple dimension example
-#'#Define the FitzHugh-Nagumo model
-#'#Define model parameters
-#'model.par   <- c(a=0.2,b=0.2,c=3)
-#'#Define initial value of state variables
-#'state       <- c(V=-1,R=1)
-#'#Define ode model for obtaining numeric solution
-#'ode.model <- function(t, state,parameters){
-#'  with(as.list(c(state,parameters)),
-#'       {
-#'         dV <- c*(V - (V^3)/3 + R)
-#'         dR <- -(1/c) * (V - a + b*R)
-#'         return(list(c(dV,dR)))
-#'       })}
-#'#Define observation points
-#'times <- seq(0,20,length.out=401)
-#'#Obtain ode solution
-#'desolve.mod <- ode(y=state,times=times,func=ode.model,parms = model.par)
-#'#Generate measurement noises
-#'nobs  <- length(times)
-#'scale <- 0.1
-#'noise_v <- scale*rnorm(n = nobs, mean = 0 , sd = 1)
-#'noise_r <- scale*rnorm(n = nobs, mean = 0 , sd = 1)
-#'#Store observations
-#'observ <- matrix(NA, nrow = length(times),ncol =3)
-#'observ[,1] <- times
-#'observ[,2] <- desolve.mod[,2] + noise_v
-#'observ[,3] <- desolve.mod[,3] + noise_r
-#'#Define basis for interpolating observation of both state variables
-#'#can use same basis for both dimensions
-#'knots <- seq(0,20,length.out=101)
-#'#order of basis functions
-#'norder <- 4
-#'#number of basis funtions
-#'nbasis <- length(knots) + norder - 2
-#'#creating basis
-#'basis  <- create.bspline.basis(c(0,20),nbasis,norder,breaks = knots)
-#'#Make a list of basis object for interpolation
-#'basis.list <- list(basis, basis)
-#'data <- observ[,2:3]
-#'colnames(data) <- c('V','R')
-#'#parameter estimation
-#'pcode.result <- pcode(data = observ[,2:3], time= observ[,1], ode.model = ode.model,
-#'                      par.names = c('a','b','c'),state.names = c('V','R'), par.initial = c(0.1,0.3,4),
-#'                      lambda = c(1e2,1e2),basis.list = basis.list,
-#'                      controls = list(smooth.lambda = 10,verbal = 1,maxeval = 150))
+
 #' @export
-pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun = NULL, par.initial, basis.list, lambda = NULL,
-    controls = NULL) {
+pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun = NULL, par.initial, basis.list, lambda, controls = list()) {
     # Set up default controls for optimizations and quadrature evaluation
     con.default <- list(nquadpts = 101, smooth.lambda = 100, tau = 0.01, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
     # Replace default with user's input
@@ -131,7 +87,7 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
             return(list(structural.par = result$structural.par, nuisance.par = result$nuisance.par))
         } else {
             result <- pcode_lkh_1d(data = data, time = time, likelihood.fun = likelihood.fun, ode.model = ode.model,
-                par.initial = par.initial, range = c(0, 1), par.names = par.names, state.names = state.names, basis.list = basis.list,
+                par.initial = par.initial, par.names = par.names, state.names = state.names, basis.list = basis.list,
                 lambda = lambda, controls = con.now)
             return(list(structural.par = result$structural.par, nuisance.par = result$nuisance.par))
         }
@@ -215,7 +171,6 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
 #' @return   \item{quadts}{Quadrature points.}
 #' @return   \item{quadwts}{Quadrature weights.}
 #'
-#' @examples lapply(basis.list, prepare_basis, times = time, nquadpts = nquadpts)
 prepare_basis <- function(basis, times, nquadpts) {
 
     # Evaluate basis functions over observation time points
@@ -458,10 +413,11 @@ outterobj <- function(ode.parameter, basis.initial, derivative.model, inner.inpu
 
 #' @title Parameter Cascade Method for Ordinary Differential Equation Models (Single dimension version)
 #' @description Obtain estiamtes of structural parameters of an ODE model by parameter cascade method.
-#' @usage pcode_1d(data, time, ode.model, par.initial, basis,lambda,controls)
+#' @usage pcode_1d(data, time, ode.model, par.initial,par.names, basis,lambda,controls = list())
 #' @param        data A data frame or a vector contains observations from the ODE model.
 #' @param         time The vector contain observation times.
 #' @param    ode.model Defined R function that computes the time derivative of the ODE model given observations of states variable.
+#' @param  par.names The names of structural parameters defined in the 'ode.model'.
 #' @param  par.initial Initial value of structural parameters to be optimized.
 #' @param   basis A basis objects for smoothing observations.
 #' @param       lambda Penalty parameter.
@@ -469,11 +425,12 @@ outterobj <- function(ode.parameter, basis.initial, derivative.model, inner.inpu
 #'
 #' @return   \item{structural.par}{The structural parameters of the ODE model.}
 #' @return    \item{nuisance.par}{The nuisance parameters or the basis coefficients for interpolating observations.}
-pcode_1d <- function(data, time, ode.model, par.initial, par.names, basis, lambda = NULL, controls = NULL) {
+pcode_1d <- function(data, time, ode.model, par.initial, par.names, basis, lambda, controls = list()) {
 
     # number of parameters
     npar <- length(par.initial)
 
+    nbasis <- basis$nbasis
 
     # Evaluating basis functions at time points of observations and stored as columns in Phi matrix
     Phi.mat <- eval.basis(time, basis)
@@ -525,15 +482,16 @@ pcode_1d <- function(data, time, ode.model, par.initial, par.names, basis, lambd
 
 #' @title       Optimizer for non-linear least square problems
 #' @description Obtain the solution to minimize the sum of squared errors of the defined function \code{fun} by levenberg-marquardt method. Adapted from PRACMA package.
-#' @usage       nls_optimize(fun, x0, ..., options)
+#' @usage       nls_optimize(fun, x0, ..., options,verbal)
 #' @param       fun The function returns the vector of weighted residuals.
 #' @param       x0  The initial value for optimization.
+#' @param       verbal Default = 1 for printing iteration and other for suppressing
 #' @param       ... Parameters to be passed for \code{fun}
 #' @param       options Additional optimization controls.
 #'
 #' @return   \item{par}{The solution to the non-linear least square problem, the same size as \code{x0}}
 
-nls_optimize <- function(fun, x0, options = list(), ..., verbal = 1) {
+nls_optimize <- function(fun, x0, ..., options = list(), verbal = 1) {
     stopifnot(is.numeric(x0))
     opts <- list(tau = 0.001, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
     namedOpts <- match.arg(names(options), choices = names(opts), several.ok = TRUE)
@@ -636,7 +594,7 @@ nls_optimize <- function(fun, x0, options = list(), ..., verbal = 1) {
 #'
 #' @return   \item{par}{The solution to the non-linear least square problem, the same size as \code{x0}}
 
-nls_optimize.inner <- function(fun, x0, options = list(), ..., verbal = FALSE) {
+nls_optimize.inner <- function(fun, x0,..., options = list()) {
     stopifnot(is.numeric(x0))
     opts <- list(tau = 0.001, tolx = 1e-06, tolg = 1e-06, maxeval = 30)
     namedOpts <- match.arg(names(options), choices = names(opts), several.ok = TRUE)
@@ -715,7 +673,8 @@ nls_optimize.inner <- function(fun, x0, options = list(), ..., verbal = FALSE) {
 
 #' @title       Find optimial penalty parameter lambda by cross-validation.
 #' @description Obtain the optimal sparsity parameter given a search grid based on cross validation score with replications.
-#' @usage tunelambda(data, time, ode.model, par.names, state.names, \cr        par.initial, basis.list,lambda,lambda_grid,cv_points,controls)
+#' @usage tunelambda(data, time, ode.model, par.names, state.names,
+#'                   par.initial, basis.list,lambda_grid,cv_portion,kfolds, rep,controls)
 #' @param data A data frame or matrix contrain observations from each dimension of the ODE model.
 #' @param         time The vector contain observation times or a matrix if time points are different between dimensions.
 #' @param    ode.model Defined R function that computes the time derivative of the ODE model given observations of states variable.
@@ -734,7 +693,7 @@ nls_optimize.inner <- function(fun, x0, options = list(), ..., verbal = FALSE) {
 
 #' @export
 tunelambda <- function(data, time, ode.model, par.names, state.names, par.initial, basis.list, lambda_grid, cv_portion,
-    kfolds, rep, controls = NULL) {
+    kfolds, rep, controls = list()) {
 
     # Determine the folding of the original data
     boundary.points <- seq(min(time), max(time), length.out = kfolds + 1)
@@ -922,7 +881,8 @@ outterobj_lkh <- function(ode.parameter, basis.initial, derivative.model, likeli
 
 #' @title pcode_lkh (likelihood and multiple dimension version)
 #' @description Obtain estimates of both structural and nuisance parameters of an ODE model by parameter cascade method.
-#' @usage pcode_lkh(data, likelihood.fun, time, ode.model, par.names, state.names, par.initial, basis.list, lambda, controls=list())
+#' @usage pcode_lkh(data, likelihood.fun, time, ode.model, par.names,
+#'                  state.names, par.initial, basis.list, lambda, controls)
 #' @param data A data frame or a matrix contain observations from each dimension of the ODE model.
 #' @param likelihood.fun A function computes the likelihood or the loglikelihood of the errors.
 #' @param time A vector contains observation ties or a matrix if time points are different between dimesion.
@@ -996,7 +956,8 @@ pcode_lkh <- function(data, likelihood.fun, time, ode.model, par.names, state.na
 
 #' @title Parameter Cascade Method for Ordinary Differential Equation Models (likelihood and Single dimension version)
 #' @description Obtain estimates of both structural and nuisance parameters of an ODE model by parameter cascade method.
-#' @usage pcode_lkh_1d(data, likelihood.fun, time, ode.model, par.names, state.names, par.initial, basis.list, lambda, controls=list())
+#' @usage pcode_lkh_1d(data, likelihood.fun, time, ode.model, par.names,
+#'                     state.names, par.initial, basis.list, lambda, controls)
 #' @param data A data frame or a matrix contain observations from each dimension of the ODE model.
 #' @param likelihood.fun A function computes the likelihood or the loglikelihood of the errors.
 #' @param time A vector contains observation ties or a matrix if time points are different between dimesion.
@@ -1021,8 +982,8 @@ pcode_lkh <- function(data, likelihood.fun, time, ode.model, par.names, state.na
 #' @return   \item{structural.par}{The structural parameters of the ODE model.}
 #'
 #' @return    \item{nuisance.par}{The nuisance parameters or the basis coefficients for interpolating observations.}
-pcode_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial, range, basis.list, par.names, state.names,
-    lambda = NULL, controls = NULL) {
+pcode_lkh_1d <- function(data,likelihood.fun,time, ode.model, par.names, state.names, par.initial, basis.list,
+    lambda, controls = list()) {
     # Set up default controls for optimizations and quadrature evaluation
     con.default <- list(nquadpts = 101, smooth.lambda = 100, tau = 0.01, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
     # Replace default with user's input
@@ -1031,7 +992,7 @@ pcode_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial, ran
 
     # number of parameters
     npar <- length(par.initial)
-
+    nbasis <- basis.list$nbasis
 
     # Evaluating basis functions at time points of observations and stored as columns in Phi matrix
     Phi.mat <- eval.basis(time, basis)
@@ -1066,8 +1027,7 @@ pcode_lkh_1d <- function(data, time, likelihood.fun, ode.model, par.initial, ran
     inner.input = list(data, Phi.mat, lambda, Qmat, Q.D1mat, quadts, quadwts, time, state.names, par.names)
 
     theta.final <- optim(par.initial, outterobj_lkh_1d, basis.initial = initial_coef, derivative.model = ode.model,
-        control = list(trace = 1), inner.input = inner.input, likelihood.fun = likelihood.fun, method = "Brent", lower = range[1],
-        upper = range[2])$par
+        control = list(trace = 1), inner.input = inner.input, likelihood.fun = likelihood.fun, method = "Brent")$par
 
     basiscoef <- optim(initial_coef, innerobj_lkh_1d, ode.par = theta.final, input = inner.input, derive.model = ode.model,
         likelihood.fun = likelihood.fun)$par
@@ -1172,7 +1132,8 @@ myCount <- function(...) {
 
 #' @title Bootstrap variance estimator of structural parameters.
 #' @description Obtaining an estimate of variance for structural parameters by bootstrap method.
-#' @usage bootsvar(data, time, ode.model,par.names,state.names, likelihood.fun = NULL,\cr            par.initial, basis.list, lambda = NULL,bootsrep,controls = NULL)
+#' @usage bootsvar(data, time, ode.model,par.names,state.names, likelihood.fun = NULL,
+#'        par.initial, basis.list, lambda = NULL,bootsrep,controls = NULL)
 #' @param        data A data frame or a matrix contain observations from each dimension of the ODE model.
 #' @param         time A vector contain observation times or a matrix if time points are different between dimensions.
 #' @param    ode.model An R function that computes the time derivative of the ODE model given observations of states variable and structural parameters.
@@ -1293,7 +1254,8 @@ bootsvar <- function(data, time, ode.model, par.names, state.names, likelihood.f
 
 #' @title Numeric estimation of variance of structural parameters by Delta method.
 #' @description Obtaining variance of structural parameters by Delta method.
-#' @usage  deltavar(data, time, ode.model,par.names,state.names, likelihood.fun = NULL, \cr        par.initial, basis.list, lambda = NULL,stepsize,y_stepsize,controls = NULL)
+#' @usage  deltavar(data, time, ode.model,par.names,state.names,
+#'                  likelihood.fun par.initial, basis.list, lambda,stepsize,y_stepsize,controls)
 #' @param        data A data frame or a matrix contain observations from each dimension of the ODE model.
 #' @param         time A vector contain observation times or a matrix if time points are different between dimensions.
 #' @param    ode.model An R function that computes the time derivative of the ODE model given observations of states variable and structural parameters.
@@ -1549,7 +1511,7 @@ deltavar <- function(data, time, ode.model, par.names, state.names, likelihood.f
 
 #' @title Parameter Cascade Method for Ordinary Differential Equation Models with missing state variable
 #' @description Obtain estiamtes of both structural and nuisance parameters of an ODE model by parameter cascade method when the dynamics are partially observed.
-#' @usage pcode_missing(data, time, ode.model, par.names, state.names, \cr        par.initial, basis.list,lambda,controls)
+#' @usage pcode_missing(data, time, ode.model, par.names, state.names, likelihood.fun,par.initial, basis.list,lambda,controls)
 #' @param        data A data frame or a matrix contain observations from each dimension of the ODE model.
 #' @param         time A vector contain observation times or a matrix if time points are different between dimensions.
 #' @param    ode.model An R function that computes the time derivative of the ODE model given observations of states variable and structural parameters.

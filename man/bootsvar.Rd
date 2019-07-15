@@ -4,7 +4,8 @@
 \alias{bootsvar}
 \title{Bootstrap variance estimator of structural parameters.}
 \usage{
-bootsvar(data, time, ode.model,par.names,state.names, likelihood.fun = NULL,\cr            par.initial, basis.list, lambda = NULL,bootsrep,controls = NULL)
+bootsvar(data, time, ode.model,par.names,state.names, likelihood.fun = NULL,
+       par.initial, basis.list, lambda = NULL,bootsrep,controls = NULL)
 }
 \arguments{
 \item{data}{A data frame or a matrix contain observations from each dimension of the ODE model.}

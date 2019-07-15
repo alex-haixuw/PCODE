@@ -29,6 +29,3 @@ prepare_basis(basis, times, nquadpts)
 \description{
 Calculate all basis functions over observation time points and store them as columns in a single matrix for each dimension. Also include first and second order derivative. Repeat over quadrature points.
 }
-\examples{
-lapply(basis.list, prepare_basis, times = time, nquadpts = nquadpts)
-}

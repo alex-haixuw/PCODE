@@ -4,7 +4,8 @@
 \alias{pcode_lkh}
 \title{pcode_lkh (likelihood and multiple dimension version)}
 \usage{
-pcode_lkh(data, likelihood.fun, time, ode.model, par.names, state.names, par.initial, basis.list, lambda, controls=list())
+pcode_lkh(data, likelihood.fun, time, ode.model, par.names,
+                 state.names, par.initial, basis.list, lambda, controls)
 }
 \arguments{
 \item{data}{A data frame or a matrix contain observations from each dimension of the ODE model.}

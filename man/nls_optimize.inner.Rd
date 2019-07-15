@@ -11,9 +11,9 @@ nls_optimize.inner(fun, x0, ..., options)
 
 \item{x0}{The initial value for optimization.}
 
-\item{options}{Additional optimization controls.}
-
 \item{...}{Parameters to be passed for \code{fun}}
+
+\item{options}{Additional optimization controls.}
 }
 \value{
 \item{par}{The solution to the non-linear least square problem, the same size as \code{x0}}
