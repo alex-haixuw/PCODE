@@ -3,3 +3,7 @@
 ^doc$
 ^Meta$
 ^LICENSE\.md$
+^README\.Rmd$
+^reference\.bib$
+^README\.html$
+^bootsvar_alg.png$

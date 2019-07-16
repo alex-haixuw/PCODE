@@ -14,7 +14,7 @@ header-includes:
    - \usepackage{framed}
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Introduction to PCODE}
+  %\VignetteIndexEntry{Introduction to pCODE}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -86,7 +86,7 @@ where $v$ indicates to the total number of points kept from estimation and $t^{\
 All the functions of this packages are derivative-free, hence the variance of structural parameters is numerically approximated. The first option is to use the bootstrap variance estimator. Given the estimation of both parameters $\mathbf{\theta}$ and $\mathbf{c}$, we are able to solve the ODE directly with estimated initial value $\hat{\mathbf{x}}(t_{0})$. Hence, bootstrap samples of the ODE model can be simulated based on the estimated distribution of errors $\mathbf{e}_{i}$ for each dimension. The detailed algorithm for obtaining a bootstrap variance is as follows
 ![](bootsvar_alg.png)
 
-As an alternative to the boostrap variance estimator, the package \pkg{PCODE} also offers another numeric estimator for the variance of structural parameters. \cite{parcascade} has developed the approximation to $Var(\mathbf{\hat{\theta}}(\mathbf{y}))$ via the delta-method. The resulting approximation is of the form 
+As an alternative to the boostrap variance estimator, the package \pkg{pCODE} also offers another numeric estimator for the variance of structural parameters. \cite{parcascade} has developed the approximation to $Var(\mathbf{\hat{\theta}}(\mathbf{y}))$ via the delta-method. The resulting approximation is of the form 
 \begin{equation*}
 Var(\hat{\mathbf{\theta}}(\mathbf{y})) \approx \bigg[ \frac{d\mathbf{\hat{\theta}}}{d\mathbf{y}} \bigg] \mathbf{\Sigma}  \bigg[ \frac{d\mathbf{\hat{\theta}}}{d\mathbf{y}} \bigg]^{\prime}
 \end{equation*} 
@@ -125,7 +125,7 @@ The following code defines the forementioned model that will be provided for `pc
 
 ```{r,warning=FALSE,message=FALSE}
 #load dependencies
-library(PCODE)
+library(pCODE)
 library(deSolve)
 library(fda)
 library(MASS)
@@ -189,8 +189,6 @@ The true variance for data generating parameter $\theta$ is $1.003\mathrm{e}{-5}
 bootsvar(data = observ, time = times, ode.model = ode.model, 
                        par.initial = 0.3, par.names = 'theta',state.names = 'X',
                          basis.list = basis, lambda = 1e2,bootsrep = 20)
-theta 
-9.85869e-06
 ```
 ```{r}
 deltavar(data = observ, time = times, ode.model = ode.model,

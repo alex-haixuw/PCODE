@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+
+<title>Parameter cascade method for ODE models with pCODE</title>
+
+
+
+
+
+
+
+
+
+
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+a.sourceLine { display: inline-block; line-height: 1.25; }
+a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
+a.sourceLine:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+a.sourceLine { text-indent: -1em; padding-left: 1em; }
+}
+pre.numberSource a.sourceLine
+  { position: relative; left: -4em; }
+pre.numberSource a.sourceLine::before
+  { content: attr(title);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; pointer-events: all; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {  }
+@media screen {
+a.sourceLine::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#header {
+text-align: center;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Parameter cascade method for ODE models with <strong>pCODE</strong></h1>
+
+
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+<div id="pcode" class="section level1">
+<h1>pCODE</h1>
+<!-- badges: start -->
+<!-- badges: end -->
+<p>The <code>R</code> package <code>pCODE</code> offers more user-friendly functions for estimating ODE models without specifying any derivatives. <code>pCODE</code> also includes a bootstrap variance estimator in addition to the estimator obtained by Delta method. <code>pCODE</code> uses k-fold cross-validation for choosing an optimal penalty parameter. The estimation procedure follows <span class="citation">Ramsay et al. (2007)</span> which presents a new approximation strategy in the family of collocation methods. It combines data smoothing with generalized profiling algorithm to estimate parameters of an ODE model where the solutions are subsequently obtained upon the parameter estimates.</p>
+<div id="installation" class="section level2">
+<h2>Installation</h2>
+<p>For now, the developing package can be installed <a href="https://github.com/">GitHub</a> with:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" title="1"><span class="co"># install.packages(&quot;devtools&quot;)</span></a>
+<a class="sourceLine" id="cb1-2" title="2">devtools<span class="op">::</span><span class="kw">install_github</span>(<span class="st">&quot;Aleks1123/pCODE&quot;</span>)</a></code></pre></div>
+<p>The package is being submitted to <a href="https://CRAN.R-project.org">CRAN</a>, and later you can install the released version of PCODE from <a href="https://CRAN.R-project.org">CRAN</a> with:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" title="1"><span class="kw">install.packages</span>(<span class="st">&quot;pCODE&quot;</span>)</a></code></pre></div>
+</div>
+<div id="example" class="section level2">
+<h2>Example</h2>
+<p>A simple illustration uses an one-dimensional ODE model <span class="math display">\[
+\dot{X} = \theta X (1-\frac{X}{10})
+\]</span> The following code defines the forementioned model that will be provided for <code>pcode</code> for estimating parameters and <code>ode</code> for obtaining numeric solution:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" title="1"><span class="co">#load dependencies</span></a>
+<a class="sourceLine" id="cb3-2" title="2"><span class="kw">library</span>(pCODE)</a>
+<a class="sourceLine" id="cb3-3" title="3"><span class="kw">library</span>(deSolve)</a>
+<a class="sourceLine" id="cb3-4" title="4"><span class="kw">library</span>(fda)</a>
+<a class="sourceLine" id="cb3-5" title="5"><span class="kw">library</span>(MASS)</a>
+<a class="sourceLine" id="cb3-6" title="6"><span class="kw">library</span>(pracma)</a>
+<a class="sourceLine" id="cb3-7" title="7"><span class="kw">library</span>(Hmisc)</a>
+<a class="sourceLine" id="cb3-8" title="8"><span class="co">#set seed for reproducibility</span></a>
+<a class="sourceLine" id="cb3-9" title="9"><span class="kw">set.seed</span>(<span class="dv">123</span>)</a>
+<a class="sourceLine" id="cb3-10" title="10">ode.model &lt;-<span class="st"> </span><span class="cf">function</span>(t,state,parameters){</a>
+<a class="sourceLine" id="cb3-11" title="11">            <span class="kw">with</span>(<span class="kw">as.list</span>(<span class="kw">c</span>(state,parameters)),{</a>
+<a class="sourceLine" id="cb3-12" title="12">                 dX &lt;-<span class="st"> </span>theta<span class="op">*</span>X<span class="op">*</span>(<span class="dv">1</span><span class="op">-</span>X<span class="op">/</span><span class="dv">10</span>)</a>
+<a class="sourceLine" id="cb3-13" title="13">                <span class="kw">return</span>(<span class="kw">list</span>(dX))})}</a></code></pre></div>
+<p>Let <span class="math inline">\(\theta = 0.1\)</span> and <span class="math inline">\(X(0) = 0.1\)</span></p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" title="1"><span class="co">#define model parameters</span></a>
+<a class="sourceLine" id="cb4-2" title="2">model.par   &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">theta =</span> <span class="kw">c</span>(<span class="fl">0.1</span>))</a>
+<a class="sourceLine" id="cb4-3" title="3"><span class="co">#define state initial value</span></a>
+<a class="sourceLine" id="cb4-4" title="4">state       &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">X     =</span> <span class="fl">0.1</span>)</a></code></pre></div>
+<p>Given an observation period of <span class="math inline">\([0,100]\)</span>, random noise errors are added to the ODE solution with a Normal distribution <span class="math inline">\(\text{N}(0,0.5^{2})\)</span>. Observations are generated as follows:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" title="1">times  &lt;-<span class="st"> </span><span class="kw">seq</span>(<span class="dv">0</span>,<span class="dv">100</span>,<span class="dt">length.out=</span><span class="dv">101</span>)</a>
+<a class="sourceLine" id="cb5-2" title="2">mod    &lt;-<span class="st"> </span><span class="kw">ode</span>(<span class="dt">y=</span>state,<span class="dt">times=</span>times,<span class="dt">func=</span>ode.model,<span class="dt">parms =</span> model.par)</a>
+<a class="sourceLine" id="cb5-3" title="3">nobs   &lt;-<span class="st"> </span><span class="kw">length</span>(times)</a>
+<a class="sourceLine" id="cb5-4" title="4">scale  &lt;-<span class="st"> </span><span class="fl">0.5</span></a>
+<a class="sourceLine" id="cb5-5" title="5">noise  &lt;-<span class="st"> </span>scale <span class="op">*</span><span class="st"> </span><span class="kw">rnorm</span>(<span class="dt">n =</span> nobs, <span class="dt">mean =</span> <span class="dv">0</span> , <span class="dt">sd =</span> <span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb5-6" title="6">observ &lt;-<span class="st"> </span>mod[,<span class="dv">2</span>] <span class="op">+</span><span class="st"> </span>noise</a></code></pre></div>
+<p>Subsequently, we can visualize the observations along the true solution of this simple ODE model as</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" title="1"><span class="co">#plot simulated data against generating model</span></a>
+<a class="sourceLine" id="cb6-2" title="2"><span class="kw">plot</span>(mod,<span class="dt">ylab=</span><span class="kw">names</span>(state))      <span class="co">#curve</span></a>
+<a class="sourceLine" id="cb6-3" title="3"><span class="kw">points</span>(times, observ,<span class="dt">pch=</span><span class="st">&#39;*&#39;</span>,<span class="dt">col=</span><span class="st">&#39;blue&#39;</span>)    <span class="co">#observation</span></a></code></pre></div>
+<p><img src="data:image/png;base64,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" width="100%" style="display: block; margin: auto;" /> First, a basis object needs to be defined by <code>create.bspline.basis</code> from <code>fda</code> package for smoothing observations. A B-spline basis is created given 21 konts including both interior and boundary knots acorss observation interval <span class="math inline">\((0,100)\)</span>. The order of basis functions is 4, so there is a total of 23 basis functions.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb7-1" title="1"><span class="co">#Generate basis object for interpolation and as argument of pcode</span></a>
+<a class="sourceLine" id="cb7-2" title="2"><span class="co">#21 konts equally spaced within [0,100]</span></a>
+<a class="sourceLine" id="cb7-3" title="3">knots &lt;-<span class="st"> </span><span class="kw">seq</span>(<span class="dv">0</span>,<span class="dv">100</span>,<span class="dt">length.out=</span><span class="dv">21</span>)</a>
+<a class="sourceLine" id="cb7-4" title="4"><span class="co">#order of basis functions</span></a>
+<a class="sourceLine" id="cb7-5" title="5">norder &lt;-<span class="st"> </span><span class="dv">4</span></a>
+<a class="sourceLine" id="cb7-6" title="6"><span class="co">#number of basis funtions</span></a>
+<a class="sourceLine" id="cb7-7" title="7">nbasis &lt;-<span class="st"> </span><span class="kw">length</span>(knots) <span class="op">+</span><span class="st"> </span>norder <span class="op">-</span><span class="st"> </span><span class="dv">2</span></a>
+<a class="sourceLine" id="cb7-8" title="8"><span class="co">#creating Bspline basis</span></a>
+<a class="sourceLine" id="cb7-9" title="9">basis  &lt;-<span class="st"> </span><span class="kw">create.bspline.basis</span>(<span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">100</span>),nbasis,norder,<span class="dt">breaks =</span> knots)</a></code></pre></div>
+<p>To perform parameter cascade method for estimating both structural and nuisance parameters, one can use <code>pcode</code> in the following way</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb8-1" title="1"><span class="co">#parameter estimation</span></a>
+<a class="sourceLine" id="cb8-2" title="2">pcode.result &lt;-<span class="st"> </span><span class="kw">pcode</span>(<span class="dt">data =</span> observ, <span class="dt">time =</span> times, <span class="dt">ode.model =</span> ode.model,</a>
+<a class="sourceLine" id="cb8-3" title="3">                      <span class="dt">par.initial =</span> <span class="fl">0.3</span>, <span class="dt">par.names =</span> <span class="st">&#39;theta&#39;</span>,<span class="dt">state.names =</span> <span class="st">&#39;X&#39;</span>,</a>
+<a class="sourceLine" id="cb8-4" title="4">                      <span class="dt">basis.list =</span> basis, <span class="dt">lambda =</span> <span class="fl">1e2</span>)</a></code></pre></div>
+<p>The structural parameter and nuisance parameter estiamtes can be called by</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb9-1" title="1">pcode.result<span class="op">$</span>structural.par</a>
+<a class="sourceLine" id="cb9-2" title="2"><span class="co">#&gt;      theta </span></a>
+<a class="sourceLine" id="cb9-3" title="3"><span class="co">#&gt; 0.09995229</span></a>
+<a class="sourceLine" id="cb9-4" title="4">pcode.result<span class="op">$</span>nuisance.par</a>
+<a class="sourceLine" id="cb9-5" title="5"><span class="co">#&gt;  [1]  0.1232160  0.1550332  0.1903906  0.2729993  0.4284428  0.6134020</span></a>
+<a class="sourceLine" id="cb9-6" title="6"><span class="co">#&gt;  [7]  1.0222183  1.6891098  2.5351231  3.5543293  4.8116926  6.0699739</span></a>
+<a class="sourceLine" id="cb9-7" title="7"><span class="co">#&gt; [13]  7.2145361  8.0734588  8.7456720  9.2110485  9.4866269  9.7101657</span></a>
+<a class="sourceLine" id="cb9-8" title="8"><span class="co">#&gt; [19]  9.8736650  9.9650449 10.0098433  9.9950749  9.9846698</span></a></code></pre></div>
+</div>
+<div id="references" class="section level2 unnumbered">
+<h2>References</h2>
+<div id="refs" class="references">
+<div id="ref-parcascade">
+<p>Ramsay, J. O., G. Hooker, D. Campbell, and J. Cao. 2007. “Parameter Estimation for Differential Equations: A Generalized Smoothing Approach.” <em>Journal of the Royal Statistical Society. Series B (Statistical Methodology)</em> 69 (5): 741–96.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
