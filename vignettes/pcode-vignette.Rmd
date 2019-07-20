@@ -19,7 +19,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
@@ -83,8 +83,7 @@ $$
 where $v$ indicates to the total number of points kept from estimation and $t^{\ast}_{j}$, for $j = 1,..., v$, corresponds to those points. The $t^{\ast}_{j}$'s are set to be the same across each dimension $d$ of the ODE model. The points kept away from estimation are defined by the number of folds and the portion of points in each fold. That is, a certain portion of points are kept within each fold of the entire vector of observation points.
 
 ## Variance estimation of $\mathbf{\theta}$: `bootsvar` and `deltavar`
-All the functions of this packages are derivative-free, hence the variance of structural parameters is numerically approximated. The first option is to use the bootstrap variance estimator. Given the estimation of both parameters $\mathbf{\theta}$ and $\mathbf{c}$, we are able to solve the ODE directly with estimated initial value $\hat{\mathbf{x}}(t_{0})$. Hence, bootstrap samples of the ODE model can be simulated based on the estimated distribution of errors $\mathbf{e}_{i}$ for each dimension. The detailed algorithm for obtaining a bootstrap variance is as follows
-![](bootsvar_alg.png)
+All the functions of this packages are derivative-free, hence the variance of structural parameters is numerically approximated. The first option is to use the bootstrap variance estimator. Given the estimation of both parameters $\mathbf{\theta}$ and $\mathbf{c}$, we are able to solve the ODE directly with estimated initial value $\hat{\mathbf{x}}(t_{0})$. Hence, bootstrap samples of the ODE model can be simulated based on the estimated distribution of errors $\mathbf{e}_{i}$ for each dimension. 
 
 As an alternative to the boostrap variance estimator, the package \pkg{pCODE} also offers another numeric estimator for the variance of structural parameters. \cite{parcascade} has developed the approximation to $Var(\mathbf{\hat{\theta}}(\mathbf{y}))$ via the delta-method. The resulting approximation is of the form 
 \begin{equation*}
@@ -184,19 +183,14 @@ The structural parameter and nuisance parameter estiamtes can be called by
 pcode.result$structural.par
 pcode.result$nuisance.par
 ```
-The true variance for data generating parameter $\theta$ is $1.003\mathrm{e}{-5}$, and we can then compare the performance of two functions `bootsvar` and `deltavar` for estimating $\text{var}(\theta)$.
-```{r, eval=FALSE}
-bootsvar(data = observ, time = times, ode.model = ode.model, 
-                       par.initial = 0.3, par.names = 'theta',state.names = 'X',
-                         basis.list = basis, lambda = 1e2,bootsrep = 20)
-```
+The true variance for data generating parameter $\theta$ is $1.003\mathrm{e}{-5}$, and we can then compare the performance `deltavar` for estimating $\text{var}(\theta)$.
 ```{r}
 deltavar(data = observ, time = times, ode.model = ode.model,
                         par.initial = 0.3, par.names = 'theta',state.names = 'X',
                         basis.list = basis, lambda = 1e2,
                         stepsize = 1e-5,y_stepsize = 1e-5)
 ```
-Both variance estimator give excellent estimates of the true variance of structural parameter. `tunelambda` returns a matrix of cross-validation scores for each replication given a certain $\lambda$. Based on the replicates, score averages and standard deviations can be calculated for comparison betweens candidates of $\lambda$:
+The variance estimator give sexcellent estimates of the true variance of structural parameter. `tunelambda` returns a matrix of cross-validation scores for each replication given a certain $\lambda$. Based on the replicates, score averages and standard deviations can be calculated for comparison betweens candidates of $\lambda$:
 ```{r,eval=FALSE}
 #Tune lambda based on k-fold cross-validation
 cv.result <- tunelambda(data = observ, time = times, ode.model = ode.model,
@@ -204,7 +198,7 @@ cv.result <- tunelambda(data = observ, time = times, ode.model = ode.model,
 	               	   basis.list = basis, lambda_grid = 10^(-3:10),cv_portion = .01,
                        rep = 20, kfolds = 5)
 ```
-```{r,echo=FALSE}
+```{r loaddata, echo=FALSE}
 load('simpleode.Rdata')
 ```
 ```{r, fig.width=7, fig.height=4,fig.show='hold',fig.align='center'}

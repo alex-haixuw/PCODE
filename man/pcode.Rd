@@ -48,7 +48,7 @@ The \code{controls} argument is a list providing addition inputs for the nonline
 }
 }
 \examples{
-library(fda)
+\donttest{library(fda)
 library(deSolve)
 library(MASS)
 library(pracma)
@@ -81,15 +81,12 @@ nbasis <- length(knots) + norder - 2
 basis  <- create.bspline.basis(c(0,100),nbasis,norder,breaks = knots)
 #Add random noise to ode solution for simulating data
 nobs  <- length(times)
-scale <- 0.5
+scale <- 0.1
 noise <- scale*rnorm(n = nobs, mean = 0 , sd = 1)
 observation <- desolve.mod[,2] + noise
-#plot simulated data against generating model
-plot(desolve.mod,main=names(state),ylab='') #curve
-points(times, observation,pch='*',col='blue')    #observation
 #parameter estimation
 pcode(data = observation, time = times, ode.model = ode.model,
-                     par.initial = 0.2, par.names = 'theta',state.names = 'X',
+                     par.initial = 0.1, par.names = 'theta',state.names = 'X',
                      basis.list = basis, lambda = 1e2)
-
+}
 }

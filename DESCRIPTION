@@ -1,6 +1,6 @@
 Package: pCODE
 Type: Package
-Title:Estimation of an ODE Model by Parameter Cascade Method
+Title:Estimation of an Ordinary Differential Equation Model by Parameter Cascade Method
 Version: 0.9.1
 Imports: 
     fda,
@@ -10,9 +10,10 @@ Imports:
     base,
     stats
 Depends: R (>= 3.5.0)
-Author: Haixu Wang, Jiguo Cao
-Maintainer: Haixu Wang <haixuw@sfu.ca>
-Description: An implementation of the parameter cascade method for estimating ODE models with missing or complete observations. It combines smoothing method and profile estimation to estimate any non-linear dynamic system. The package also offers variance estimates for parameters of interest based on either bootstrap or Delta method. 
+Authors@R: c(
+    person("Haixu", "Wang", email = "haixuw@sfu.ca", role =  c("aut", "cre")),
+    person("Jiguo", "Cao", email = "jiguo_cao@sfu.ca", role = "aut"))
+Description: An implementation of the parameter cascade method Ramsay, J. O., Hooker,G., Campbell, D., and Cao, J. (2007) <doi:10.1111/j.1467-9868.2007.00610.x> for estimating ordinary differential equation models with missing or complete observations. It combines smoothing method and profile estimation to estimate any non-linear dynamic system. The package also offers variance estimates for parameters of interest based on either bootstrap or Delta method.  
 License: MIT + file LICENSE
 Encoding: UTF-8
 Suggests: 
