@@ -290,7 +290,7 @@ outterobj_multi_nls <- function(ode.parameter, basis.initial, derivative.model, 
     # Convergence of basis coefficients seems to happen before 'maxeval'.
 
     inner_coef <- nls_optimize.inner(innerobj_multi, basis.initial, ode.par = ode.parameter, derive.model = derivative.model,
-        options = list(maxeval = 50, tolx = 1e-06, tolg = 1e-06), input = inner.input, verbal = 2)$par
+        options = list(maxeval = 50, tolx = 1e-06, tolg = 1e-06), input = inner.input)$par
     ndim <- length(inner.input)
     npoints <- length(inner.input[[1]][[8]])
     basisnumber <- rep(NA, ndim + 1)
@@ -1426,9 +1426,9 @@ deltavar <- function(data, time, ode.model, par.names, state.names, likelihood.f
             par.movedown[par.names[par.index]] <- struc.res[par.names[par.index]] - stepsize[par.names[par.index]]
 
             inner.coef.upper[[par.index]] <- nls_optimize.inner(innerobj_multi, nuis.res, ode.par = par.moveup, derive.model = ode.model,
-                options = list(maxeval = 50, tolx = 1e-06, tolg = 1e-06), input = inner.input, verbal = 2)$par
+                options = list(maxeval = 50, tolx = 1e-06, tolg = 1e-06), input = inner.input)$par
             inner.coef.lower[[par.index]] <- nls_optimize.inner(innerobj_multi, nuis.res, ode.par = par.movedown, derive.model = ode.model,
-                options = list(maxeval = 50, tolx = 1e-06, tolg = 1e-06), input = inner.input, verbal = 2)$par
+                options = list(maxeval = 50, tolx = 1e-06, tolg = 1e-06), input = inner.input)$par
         }
 
 
@@ -1616,7 +1616,7 @@ outterobj_multi_missing <- function(ode.parameter, basis.initial, derivative.mod
   # Convergence of basis coefficients seems to happen before 'maxeval'.
 
   inner_coef <- nls_optimize.inner(innerobj_multi_missing, basis.initial, ode.par = ode.parameter, derive.model = derivative.model,
-                                   options = list(maxeval = 100, tolx = 1e-06, tolg = 1e-06), input = inner.input, verbal = 2)$par
+                                   options = list(maxeval = 100, tolx = 1e-06, tolg = 1e-06), input = inner.input)$par
   ndim <- length(inner.input)
   npoints <- length(inner.input[[1]][[8]])
   basisnumber <- rep(NA, ndim + 1)
