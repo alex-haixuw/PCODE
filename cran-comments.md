@@ -1,8 +1,6 @@
-## Resubmission
-This is a resubmission. In this version I have
-* Explained acronyms in the DESCRIPTION file
-* Added references in the description field of DESCRIPTION
-* Replaced `\dontrun{}` by `\donttest{}`
+## submission of an update on package
+This is a submission of an update on package pCODE. In this version I have
+* fixed the verbal problem.
 
 
 ## Test environments
