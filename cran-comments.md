@@ -1,6 +1,7 @@
 ## submission of an update on package
 This is a submission of an update on package pCODE. In this version I have
-* fixed the verbal problem.
+* Fixed likelihood problem
+* Update license information
 
 
 ## Test environments
@@ -10,12 +11,11 @@ This is a submission of an update on package pCODE. In this version I have
 * local Windows 10, R 3.6.1
 
 ## R CMD check results
-There were no ERRORs or WARNINGs. 
+There were no ERRORs or WARNINGs.
 There was one NOTE:
 
 *  Possibly mis-spelled words in DESCRIPTION:
-  
+
     Cao (11:108)
-    
-Cao is the last name of the author. 
-  
+
+Cao is the last name of the author.
