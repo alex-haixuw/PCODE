@@ -533,9 +533,9 @@ nls_optimize <- function(fun, x0, ..., options = list(), verbal = 1) {
     errno <- 0
     k <- 1
     if (verbal == 1) {
-        print("#######################################")
-        print("Starting optimization")
-        print("#######################################")
+        message("#######################################")
+        message("Starting optimization")
+        message("#######################################")
     }
 
 
@@ -543,8 +543,8 @@ nls_optimize <- function(fun, x0, ..., options = list(), verbal = 1) {
 
         if (k == 1) {
             if (verbal == 1) {
-                print(paste("Current iteration: ", k, collapse = ""))
-                print(paste("Current function value: ", round(2 * f, digits = 6), collapse = ""))
+                message(paste("Current iteration: ", k, collapse = ""))
+                message(paste("Current function value: ", round(2 * f, digits = 6), collapse = ""))
             }
         }
 
@@ -563,8 +563,8 @@ nls_optimize <- function(fun, x0, ..., options = list(), verbal = 1) {
         rn <- fun(xnew)
         fn <- 0.5 * sum(rn^2)
         if (verbal == 1) {
-            print(paste("Current iteration: ", k, collapse = ""))
-            print(paste("Current function value: ", round(2 * fn, digits = 6), collapse = ""))
+            message(paste("Current iteration: ", k, collapse = ""))
+            message(paste("Current function value: ", round(2 * fn, digits = 6), collapse = ""))
         }
 
         Jn <- jacobian(fun, xnew)
@@ -739,7 +739,7 @@ tunelambda <- function(data, time, ode.model, par.names, state.names, par.initia
                 data.fit <- data[-time.index.keep, ]
             }
 
-            print(paste("Running on lambda = ", lambda_grid[jj], " for iteration ", kk, sep = ""))
+            message(paste("Running on lambda = ", lambda_grid[jj], " for iteration ", kk, sep = ""))
             pcode.result <- pcode(data = data.fit, time = time[-time.index.keep], ode.model = ode.model, par.names = par.names,
                 state.names = state.names, basis.list = basis.list, par.initial = par.initial, lambda = lambda_grid[jj],
                 controls = controls)
@@ -1198,7 +1198,7 @@ bootsvar <- function(data, time, ode.model, par.names, state.names, likelihood.f
             return(ode.model(state = state, parameters = parameters))
         }
         for (iter in 1:bootsrep) {
-            print(paste("Running on bootstrap iteration: ", iter, sep = ""))
+            message(paste("Running on bootstrap iteration: ", iter, sep = ""))
             # data.boot <- state.est + rnorm(length(state.est),mean = 0 , sd = sqrt(var.est))
             data.boot <- ode(y = state.est[1], times = time, func = tempmodel, parms = result.ini$structural.par)[,
                 -1] + rnorm(length(state.est), mean = 0, sd = sqrt(var.est))
