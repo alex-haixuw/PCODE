@@ -544,7 +544,7 @@ nls_optimize <- function(fun, x0, ..., options = list(), verbal = 1) {
         if (k == 1) {
             if (verbal == 1) {
                 message(paste("Current iteration: ", k, collapse = ""))
-                message(paste("Current function value: ", round(2 * f, digits = 6), collapse = ""))
+                message(paste("Current loss value: ", round(2 * f, digits = 6), collapse = ""))
             }
         }
 
@@ -564,7 +564,7 @@ nls_optimize <- function(fun, x0, ..., options = list(), verbal = 1) {
         fn <- 0.5 * sum(rn^2)
         if (verbal == 1) {
             message(paste("Current iteration: ", k, collapse = ""))
-            message(paste("Current function value: ", round(2 * fn, digits = 6), collapse = ""))
+            message(paste("Current loss value: ", round(2 * fn, digits = 6), collapse = ""))
         }
 
         Jn <- jacobian(fun, xnew)
