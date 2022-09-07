@@ -11,4 +11,11 @@ This is a submission of an update on package pCODE. In this version I have
 * local Windows 10, R 3.6.1
 
 ## R CMD check results
-There were no NOTES, ERRORs, or WARNINGs.
+There were no ERRORs or WARNINGs.
+There was two NOTEs:
+
+*  Found the following files/directories:
+  'lastMiKTeXException'
+
+* checking HTML version of manual ... NOTE
+Skipping checking HTML validation: no command 'tidy' found

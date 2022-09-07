@@ -7,7 +7,6 @@ Imports:
     pracma,
     MASS,
     deSolve,
-    base,
     stats
 Depends: R (>= 3.5.0)
 Authors@R: c(

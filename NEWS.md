@@ -1,4 +1,4 @@
-## pCODE 0.9.3
+## pCODE 0.9.4
 * Add verval options
 * Add automated tests for package functions
 
