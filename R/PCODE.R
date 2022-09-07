@@ -89,7 +89,7 @@
 #' @export
 pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun = NULL, par.initial, basis.list, lambda, controls = list()) {
     # Set up default controls for optimizations and quadrature evaluation
-    con.default <- list(nquadpts = 101, smooth.lambda = 100, tau = 0.01, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
+    con.default <- list(nquadpts = 101, smooth.lambda = 100, tau = 0.01, tolx = 1e-06, tolg = 1e-06, maxeval = 20,verbal = 0)
     # Replace default with user's input
     con.default[(namc <- names(controls))] <- controls
     con.now <- con.default
@@ -157,7 +157,7 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
         # Running optimization for outter objective function to obtain structural parameter
         par.final <- nls_optimize(options = list(maxeval = con.now$maxeval, tau = con.now$tau), outterobj_multi_nls,
                                   par.initial, basis.initial = unlist(initial_coef), derivative.model = ode.model, inner.input = inner.input,
-                                  verbal = 1)$par
+                                  verbal =con.now$verbal )$par
         # Condition on the obtained structural parameter, calculate the nuisance parameter or the basis coefficients to
         # interpolate data
         basis.coef.final <- nls_optimize.inner(innerobj_multi, unlist(initial_coef), ode.par = par.final, derive.model = ode.model,
@@ -486,7 +486,7 @@ pcode_1d <- function(data, time, ode.model, par.initial, par.names, basis, lambd
     #--------------------------------------------------------
     names(par.initial) <- par.names
     theta.final <- nls_optimize(outterobj, par.initial, basis.initial = initial_coef, derivative.model = ode.model,
-        inner.input = inner.input, NLS = TRUE, verbal = 1)$par
+        inner.input = inner.input, NLS = TRUE, verbal = controls$verbal)$par
 
     basiscoef <- nls_optimize.inner(innerobj, initial_coef, ode.par = theta.final, derive.model = ode.model, input = inner.input,
         NLS = TRUE)$par
@@ -505,7 +505,7 @@ pcode_1d <- function(data, time, ode.model, par.initial, par.names, basis, lambd
 #'
 #' @return   \item{par}{The solution to the non-linear least square problem, the same size as \code{x0}}
 
-nls_optimize <- function(fun, x0, ..., options = list(), verbal = 1) {
+nls_optimize <- function(fun, x0, ..., options = list(), verbal = 0) {
     stopifnot(is.numeric(x0))
     opts <- list(tau = 0.001, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
     namedOpts <- match.arg(names(options), choices = names(opts), several.ok = TRUE)
@@ -708,7 +708,7 @@ nls_optimize.inner <- function(fun, x0,..., options = list()) {
 
 #' @export
 tunelambda <- function(data, time, ode.model, par.names, state.names, par.initial, basis.list, lambda_grid, cv_portion,
-    kfolds, rep, controls = list()) {
+    kfolds, rep, controls = list()) { # nocov start
 
     # Determine the folding of the original data
     boundary.points <- seq(min(time), max(time), length.out = kfolds + 1)
@@ -785,7 +785,7 @@ tunelambda <- function(data, time, ode.model, par.names, state.names, par.initia
 
 
     return(list(cv.score = cv.score, lambda_grid = lambda_grid))
-}
+} # nocov end
 
 #' @title Inner objective function (likelihood and multiple dimension version)
 #' @description An objective function combines the likelihood or loglikelihood of errors from each dimension of state variables and the penalty controls how the state estimates fail to satisfy the ODE model.
@@ -1000,7 +1000,7 @@ pcode_lkh <- function(data, likelihood.fun, time, ode.model, par.names, state.na
 pcode_lkh_1d <- function(data,likelihood.fun,time, ode.model, par.names, state.names, par.initial, basis.list,
     lambda, controls = list()) {
     # Set up default controls for optimizations and quadrature evaluation
-    con.default <- list(nquadpts = 101, smooth.lambda = 100, tau = 0.01, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
+    con.default <- list(nquadpts = 101, smooth.lambda = 100, tau = 0.01, tolx = 1e-06, tolg = 1e-06, maxeval = 20,verbal=0)
     # Replace default with user's input
     con.default[(namc <- names(controls))] <- controls
     con.now <- con.default
@@ -1042,7 +1042,7 @@ pcode_lkh_1d <- function(data,likelihood.fun,time, ode.model, par.names, state.n
     inner.input = list(data, Phi.mat, lambda, Qmat, Q.D1mat, quadts, quadwts, time, state.names, par.names)
 
     theta.final <- optim(par.initial, outterobj_lkh_1d, basis.initial = initial_coef, derivative.model = ode.model,
-        control = list(trace = 1,maxit = con.now$maxeval), inner.input = inner.input, likelihood.fun = likelihood.fun)$par
+        control = list(trace = controls$verbal,maxit = con.now$maxeval), inner.input = inner.input, likelihood.fun = likelihood.fun)$par
 
     basiscoef <- optim(initial_coef, innerobj_lkh_1d, ode.par = theta.final, input = inner.input, derive.model = ode.model,
         likelihood.fun = likelihood.fun)$par
@@ -1212,6 +1212,7 @@ bootsvar <- function(data, time, ode.model, par.names, state.names, likelihood.f
     }
 
     # MD case for least square
+
     if (length(state.names) >= 2 && length(par.names) >= 2) {
         # Get basis coefficients
         nuipar.ini <- result.ini$nuisance.par
@@ -1297,7 +1298,7 @@ deltavar <- function(data, time, ode.model, par.names, state.names, likelihood.f
 
 
     # Set up default controls for optimizations and quadrature evaluation
-    con.default <- list(nquadpts = 101, smooth.lambda = 100, tau = 0.01, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
+    con.default <- list(nquadpts = 101, smooth.lambda = 100, tau = 0.01, tolx = 1e-06, tolg = 1e-06, maxeval = 20,verbal=0)
     # Replace default with user's input
     con.default[(namc <- names(controls))] <- controls
     con.now <- con.default
@@ -1553,7 +1554,7 @@ deltavar <- function(data, time, ode.model, par.names, state.names, likelihood.f
 #'
 #' @return    \item{nuisance.par}{The nuisance parameters or the basis coefficients for interpolating observations.}
 pcode_missing <- function(data,time, ode.model,par.names, state.names, likelihood.fun,
-                           par.initial, basis.list, lambda, controls){
+                           par.initial, basis.list, lambda, controls){ # nocov start
 
   # Evaluate basis functiosn for each state variable
   basis.eval.list <- lapply(basis.list, prepare_basis, times = time, nquadpts = controls$nquadpts)
@@ -1610,7 +1611,7 @@ pcode_missing <- function(data,time, ode.model,par.names, state.names, likelihoo
 
   return(list(structural.par = par.final, nuisance.par = basis.coef.final))
 
-}
+} # nocov end
 
 
 #' @title Outter objective function (multiple dimension version with unobserved state variables)
@@ -1624,7 +1625,7 @@ pcode_missing <- function(data,time, ode.model,par.names, state.names, likelihoo
 #'
 #' @return   \item{residual}{Vector of residuals and evaluation of penalty function on quadrature points for approximating the integral.}
 #'
-outterobj_multi_missing <- function(ode.parameter, basis.initial, derivative.model, inner.input, NLS = TRUE) {
+outterobj_multi_missing <- function(ode.parameter, basis.initial, derivative.model, inner.input, NLS = TRUE) {# nocov start
   # Convergence of basis coefficients seems to happen before 'maxeval'.
 
   inner_coef <- nls_optimize.inner(innerobj_multi_missing, basis.initial, ode.par = ode.parameter, derive.model = derivative.model,
@@ -1652,7 +1653,7 @@ outterobj_multi_missing <- function(ode.parameter, basis.initial, derivative.mod
     return(sum(residual^2))
   }
 
-}
+}# nocov end
 
 #' @title Inner objective function (multiple dimension version with unobserved state variables)
 #' @description An objective function combines the sum of squared error of basis expansion estimates and the penalty controls how those estimates fail to satisfies the ODE model
@@ -1664,7 +1665,7 @@ outterobj_multi_missing <- function(ode.parameter, basis.initial, derivative.mod
 #' @param NLS Default is \code{TRUE} so the function returns vector of residuals, and otherwise returns sum of squared errors.
 #'
 #' @return   \item{residual.vec}{Vector of residuals and evaluation of penalty function on quadrature points for approximating the integral.}
-innerobj_multi_missing <- function(basis_coef, ode.par, input, derive.model, NLS = TRUE) {
+innerobj_multi_missing <- function(basis_coef, ode.par, input, derive.model, NLS = TRUE) { # nocov start
 
   # Retrieve variables from 'input' get the dimesion of the ODE model
   ndim <- length(input)
@@ -1718,4 +1719,4 @@ innerobj_multi_missing <- function(basis_coef, ode.par, input, derive.model, NLS
     return(sum(residual.vec^2))
   }
 
-}
+} # nocov end

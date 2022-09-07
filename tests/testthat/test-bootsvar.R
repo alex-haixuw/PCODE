@@ -1,5 +1,5 @@
-context('pcode')
-test_that("pcode works in parameter estimation",{
+context('bootsvar')
+test_that('Bootstrap variance estimation works',{
   set.seed(123)
   ode.model <- function(t,state,parameters){
     with(as.list(c(state,parameters)),{
@@ -12,7 +12,7 @@ test_that("pcode works in parameter estimation",{
   times  <- seq(0,100,length.out=101)
   mod    <- ode(y=state,times=times,func=ode.model,parms = model.par)
   nobs   <- length(times)
-  scale  <- 0.1
+  scale  <- 0.5
   noise  <- scale * rnorm(n = nobs, mean = 0 , sd = 1)
   observ <- mod[,2] + noise
   #Generate basis object for interpolation and as argument of pcode
@@ -25,8 +25,9 @@ test_that("pcode works in parameter estimation",{
   #creating Bspline basis
   basis  <- create.bspline.basis(c(0,100),nbasis,norder,breaks = knots)
 
-  pcode.result <- pcode(data = observ, time = times, ode.model = ode.model,
-                        par.initial = 0.1, par.names = 'theta',state.names = 'X',
-                        basis.list = basis, lambda = 1e2)
-  expect_equal( (abs(unname(pcode.result$structural.par) - unname(model.par))/abs(unname(model.par))) <= 1e-1, TRUE)
+  bootsvar.res <- bootsvar(data = observ, time = times, ode.model = ode.model,
+                           par.initial = 0.1, par.names = 'theta',state.names = 'X',
+                           basis.list = basis, lambda = 1e2,bootsrep = 20,controls = list(verbal = 0))
+
+  expect_equal( (abs(as.numeric(bootsvar.res) - 1e-5)/1e-5) < 1,TRUE)
 })
