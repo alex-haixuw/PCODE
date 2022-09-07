@@ -35,7 +35,7 @@ The `R` package `pCODE` offers more user-friendly functions for estimating ODE m
 For now, the developing package can be installed [GitHub](https://github.com/) with:
 ``` r
 # install.packages("devtools")
-devtools::install_github("Aleks1123/pCODE")
+devtools::install_github('alex-haixuw/PCODE')
 ```
 The package is being submitted to [CRAN](https://CRAN.R-project.org), and later you can install the released version of PCODE from [CRAN](https://CRAN.R-project.org) with:
 ``` r
