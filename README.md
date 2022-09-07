@@ -45,7 +45,7 @@ For now, the developing package can be installed
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("Aleks1123/pCODE")
+devtools::install_github('alex-haixuw/PCODE')
 ```
 
 The package is being submitted to \[CRAN\], and later you can install
